@@ -14,6 +14,7 @@ import {
   HISTORY_PUSH_TAG,
   KEY_ARROW_DOWN_COMMAND,
   KEY_ARROW_UP_COMMAND,
+  KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
   KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
@@ -407,6 +408,24 @@ function MentionKeyboardPlugin() {
           }
           event.preventDefault();
           engine.pub(moveMentionHighlight$, -1);
+          return true;
+        },
+        COMMAND_PRIORITY_CRITICAL
+      ),
+      // Emacs-style C-n/C-p; Lexical only maps real arrow keys to the arrow
+      // commands, so these are picked off the generic keydown stream.
+      editor.registerCommand<KeyboardEvent>(
+        KEY_DOWN_COMMAND,
+        (event) => {
+          if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+            return false;
+          }
+          const key = event.key.toLowerCase();
+          if ((key !== "n" && key !== "p") || !menuHasResults()) {
+            return false;
+          }
+          event.preventDefault();
+          engine.pub(moveMentionHighlight$, key === "n" ? 1 : -1);
           return true;
         },
         COMMAND_PRIORITY_CRITICAL

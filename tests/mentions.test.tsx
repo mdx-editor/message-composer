@@ -10,6 +10,7 @@ import {
   $isTextNode,
   BLUR_COMMAND,
   KEY_ARROW_DOWN_COMMAND,
+  KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
   type LexicalEditor,
 } from "lexical";
@@ -288,6 +289,43 @@ test("arrow keys are consumed only while the menu has results", async () => {
     handled = editor.dispatchCommand(KEY_ARROW_DOWN_COMMAND, new KeyboardEvent("keydown", { key: "ArrowDown" }));
   });
   expect(handled).toBe(true);
+});
+
+test("ctrl+n/ctrl+p move the highlight emacs-style while the menu has results", async () => {
+  const { provider, calls } = deferredProvider();
+  const { engine, editor } = setup({ plugins: [mentionsPlugin({ providers: [provider] })] });
+
+  // Lexical's built-in KEY_DOWN_COMMAND handler always returns true, so the
+  // dispatch result can't tell whether the menu consumed the key; the
+  // observable contract is preventDefault plus the highlight cell.
+  const dispatch = async (init: KeyboardEventInit) => {
+    const event = new KeyboardEvent("keydown", { cancelable: true, ...init });
+    await act(async () => {
+      editor.dispatchCommand(KEY_DOWN_COMMAND, event);
+      await Promise.resolve();
+    });
+    return event;
+  };
+
+  let event = await dispatch({ key: "n", ctrlKey: true });
+  expect(event.defaultPrevented).toBe(false);
+
+  typeText(editor, "@a");
+  await resolveSearch(calls.at(-1)!, [ADA, ALAN]);
+
+  event = await dispatch({ key: "n", ctrlKey: true });
+  expect(event.defaultPrevented).toBe(true);
+  expect(engine.getValue(mentionHighlight$)).toBe(1);
+
+  event = await dispatch({ key: "p", ctrlKey: true });
+  expect(event.defaultPrevented).toBe(true);
+  expect(engine.getValue(mentionHighlight$)).toBe(0);
+
+  event = await dispatch({ key: "n" });
+  expect(event.defaultPrevented).toBe(false);
+  event = await dispatch({ key: "n", ctrlKey: true, shiftKey: true });
+  expect(event.defaultPrevented).toBe(false);
+  expect(engine.getValue(mentionHighlight$)).toBe(0);
 });
 
 test("cancel dismisses the menu until the trigger run changes position", async () => {
