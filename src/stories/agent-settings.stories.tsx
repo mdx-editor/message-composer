@@ -1,15 +1,15 @@
 import { useState } from "react";
 
 import { ModelEffortPicker as RegistryModelEffortPicker } from "../../registry/components/agent-settings/model-effort-picker.tsx";
+import { MessageComposer, useCellValues, usePublisher, type MessageComposerValue } from "../index.ts";
 import {
   agent$,
-  agentSettingsFeature,
+  agentSettingsPlugin,
   effortOptions$,
   modelOptions$,
   selectEffort$,
   selectModel$,
-} from "../features/agent-settings/index.ts";
-import { MessageComposer, useCellValues, usePublisher, type MessageComposerValue } from "../index.ts";
+} from "../plugins/agent-settings/index.ts";
 
 import "./tailwind.css";
 
@@ -29,8 +29,8 @@ const editorStyle = {
 } as const;
 const inspectorStyle = { background: "#f4f4f5", padding: 8, whiteSpace: "pre-wrap" } as const;
 
-const features = [
-  agentSettingsFeature({
+const plugins = [
+  agentSettingsPlugin({
     models: [
       { id: "fable-5", label: "Fable 5" },
       { id: "opus-4-8", label: "Opus 4.8" },
@@ -48,7 +48,7 @@ export const ModelEffortPicker = () => {
   return (
     <div style={layoutStyle}>
       <MessageComposer
-        features={features}
+        plugins={plugins}
         slots={{ footer: RegistryModelEffortPicker }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
         onSubmit={setSubmitted}
@@ -60,7 +60,7 @@ export const ModelEffortPicker = () => {
   );
 };
 
-// Custom UI over the exact same feature contracts: no registry component, no
+// Custom UI over the exact same plugin contracts: no registry component, no
 // Tailwind requirement — option cells in, selection streams out.
 const CustomAgentControls = () => {
   const [agent, models, efforts] = useCellValues(agent$, modelOptions$, effortOptions$);
@@ -103,7 +103,7 @@ export const CustomUI = () => {
   return (
     <div style={layoutStyle}>
       <MessageComposer
-        features={features}
+        plugins={plugins}
         slots={{ footer: CustomAgentControls }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
         onSubmit={setSubmitted}

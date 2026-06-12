@@ -9,8 +9,9 @@
     "types": ["node", "react", "react-dom"],
     "paths": {
       "@mdxeditor/message-composer": ["./src/index.ts"],
-      "@mdxeditor/message-composer/features/agent-settings": ["./src/features/agent-settings/index.ts"],
-      "@mdxeditor/message-composer/features/formatting": ["./src/features/formatting/index.tsx"]
+      "@mdxeditor/message-composer/plugins/agent-settings": ["./src/plugins/agent-settings/index.ts"],
+      "@mdxeditor/message-composer/plugins/formatting": ["./src/plugins/formatting/index.tsx"],
+      "@mdxeditor/message-composer/plugins/mentions": ["./src/plugins/mentions/index.ts"]
     },
     "strict": true,
     "noUnusedLocals": true,

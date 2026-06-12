@@ -5,20 +5,6 @@ import { afterEach, expect, test } from "vite-plus/test";
 
 import { controlled$, submitHandler$ } from "../src/core/nodes.ts";
 import {
-  agentSettingsFeature,
-  effortOptions$,
-  modelOptions$,
-  selectEffort$,
-  selectModel$,
-} from "../src/features/agent-settings/index.ts";
-import {
-  formattingFeature,
-  formattingState$,
-  formatText$,
-  toggleBlock$,
-  toggleLink$,
-} from "../src/features/formatting/index.tsx";
-import {
   createEmptyMessageComposerValue,
   draftValue$,
   lexicalEditor$,
@@ -30,6 +16,20 @@ import {
   type MessageComposerProps,
   type MessageComposerValue,
 } from "../src/index.ts";
+import {
+  agentSettingsPlugin,
+  effortOptions$,
+  modelOptions$,
+  selectEffort$,
+  selectModel$,
+} from "../src/plugins/agent-settings/index.ts";
+import {
+  formattingPlugin,
+  formattingState$,
+  formatText$,
+  toggleBlock$,
+  toggleLink$,
+} from "../src/plugins/formatting/index.tsx";
 
 afterEach(cleanup);
 
@@ -90,7 +90,7 @@ function selectAll(editor: LexicalEditor) {
 test("formatText toggles inline formats and serializes to markdown", async () => {
   const changes: MessageComposerValue[] = [];
   const { engine, editor } = setup({
-    features: [formattingFeature()],
+    plugins: [formattingPlugin()],
     onValueChange: (value) => changes.push(value),
   });
 
@@ -114,7 +114,7 @@ test("formatText toggles inline formats and serializes to markdown", async () =>
 test("strikethrough and inline code serialize to markdown", async () => {
   const changes: MessageComposerValue[] = [];
   const { engine, editor } = setup({
-    features: [formattingFeature()],
+    plugins: [formattingPlugin()],
     onValueChange: (value) => changes.push(value),
   });
 
@@ -132,7 +132,7 @@ test("strikethrough and inline code serialize to markdown", async () => {
 test("toggleBlock switches between paragraph, quote, code, and lists", async () => {
   const changes: MessageComposerValue[] = [];
   const { engine, editor } = setup({
-    features: [formattingFeature()],
+    plugins: [formattingPlugin()],
     onValueChange: (value) => changes.push(value),
   });
 
@@ -166,7 +166,7 @@ test("toggleBlock switches between paragraph, quote, code, and lists", async () 
 test("toggleLink wraps and unwraps the selection", async () => {
   const changes: MessageComposerValue[] = [];
   const { engine, editor } = setup({
-    features: [formattingFeature()],
+    plugins: [formattingPlugin()],
     onValueChange: (value) => changes.push(value),
   });
 
@@ -184,7 +184,7 @@ test("toggleLink wraps and unwraps the selection", async () => {
 });
 
 test("markdown text-format shortcuts convert typed syntax", async () => {
-  const { container, editor } = setup({ features: [formattingFeature()] });
+  const { container, editor } = setup({ plugins: [formattingPlugin()] });
 
   // The shortcut listener only fires when the anchor advances like real typing,
   // one character per update.
@@ -199,7 +199,7 @@ test("markdown text-format shortcuts convert typed syntax", async () => {
 });
 
 test("formatting state resets when the selection has no formats", () => {
-  const { engine, editor } = setup({ features: [formattingFeature()] });
+  const { engine, editor } = setup({ plugins: [formattingPlugin()] });
 
   typeText(editor, "plain");
   selectAll(editor);
@@ -215,12 +215,12 @@ test("formatting state resets when the selection has no formats", () => {
   });
 });
 
-test("agent-settings: feature init seeds options and defaults into the uncontrolled draft", () => {
+test("agent-settings: plugin init seeds options and defaults into the uncontrolled draft", () => {
   const engine = new Engine();
   const changes: MessageComposerValue[] = [];
   engine.sub(valueChange$, (value) => changes.push(value));
 
-  const feature = agentSettingsFeature({
+  const plugin = agentSettingsPlugin({
     models: [
       { id: "fable-5", label: "Fable 5" },
       { id: "opus-4-8", label: "Opus 4.8" },
@@ -229,7 +229,7 @@ test("agent-settings: feature init seeds options and defaults into the uncontrol
     defaultModelId: "fable-5",
     defaultEffort: "medium",
   });
-  feature.init?.({ engine });
+  plugin.init?.({ engine });
 
   expect(engine.getValue(modelOptions$)).toHaveLength(2);
   expect(engine.getValue(effortOptions$)).toEqual(["low", "medium", "high"]);
@@ -245,7 +245,7 @@ test("agent-settings: defaults do not override an already seeded agent value", (
     },
   });
 
-  agentSettingsFeature({
+  agentSettingsPlugin({
     models: [{ id: "fable-5", label: "Fable 5" }],
     defaultModelId: "fable-5",
     defaultEffort: "high",
@@ -257,7 +257,7 @@ test("agent-settings: defaults do not override an already seeded agent value", (
 test("agent-settings: controlled mode never seeds defaults", () => {
   const engine = new Engine({ [controlled$]: true });
 
-  agentSettingsFeature({
+  agentSettingsPlugin({
     models: [{ id: "fable-5", label: "Fable 5" }],
     defaultModelId: "fable-5",
   }).init?.({ engine });

@@ -1,5 +1,5 @@
 // Internal registries for the markdown pipeline. These cells are deliberately
-// not exported from the package index (decided 2026-06-12); features extend
+// not exported from the package index (decided 2026-06-12); plugins extend
 // them through their init context, and the surface goes public no earlier than
 // the mentions stage.
 import { Cell } from "@virtuoso.dev/reactive-engine-core";

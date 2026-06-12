@@ -14,7 +14,7 @@ import {
   setMarkdown$,
   useEngineRef,
   type EngineRef,
-  type MessageComposerFeature,
+  type MessageComposerPlugin,
 } from "../src/index.ts";
 import { $exportMarkdown, $importMarkdown } from "../src/lexical/markdown.ts";
 import type { LexicalExportVisitor, ToMarkdownExtension } from "../src/lexical/mdast/exportMarkdownFromLexical.ts";
@@ -96,7 +96,7 @@ describe("dialect normalization and degradation", () => {
   });
 });
 
-test("a feature-registered import visitor reaches the conversion", async () => {
+test("a plugin-registered import visitor reaches the conversion", async () => {
   const ThematicBreakVisitor: MdastImportVisitor<Mdast.RootContent> = {
     priority: 10,
     testNode: "thematicBreak",
@@ -107,7 +107,7 @@ test("a feature-registered import visitor reaches the conversion", async () => {
     },
   };
 
-  const extensionFeature: MessageComposerFeature = {
+  const extensionPlugin: MessageComposerPlugin = {
     id: "test-extension",
     init: ({ engine }) => {
       engine.pub(importVisitors$, [ThematicBreakVisitor, ...engine.getValue(importVisitors$)]);
@@ -118,7 +118,7 @@ test("a feature-registered import visitor reaches the conversion", async () => {
   const Host = () => {
     const engineRef = useEngineRef();
     captured.engineRef = engineRef;
-    return <MessageComposer engineRef={engineRef} features={[extensionFeature]} />;
+    return <MessageComposer engineRef={engineRef} plugins={[extensionPlugin]} />;
   };
   const { container } = render(<Host />);
   const engine = captured.engineRef?.current;
@@ -135,7 +135,7 @@ test("a feature-registered import visitor reaches the conversion", async () => {
   expect(container.querySelector("[contenteditable]")?.textContent).toContain("[horizontal rule]");
 });
 
-test("a feature-registered export visitor reaches the conversion", () => {
+test("a plugin-registered export visitor reaches the conversion", () => {
   const ParagraphExportVisitor: LexicalExportVisitor<ParagraphNode, Mdast.Paragraph> = {
     priority: 10,
     testLexicalNode: $isParagraphNode,
@@ -147,7 +147,7 @@ test("a feature-registered export visitor reaches the conversion", () => {
     },
   };
 
-  const extensionFeature: MessageComposerFeature = {
+  const extensionPlugin: MessageComposerPlugin = {
     id: "test-export-extension",
     init: ({ engine }) => {
       engine.pub(exportVisitors$, [
@@ -164,7 +164,7 @@ test("a feature-registered export visitor reaches the conversion", () => {
     return (
       <MessageComposer
         engineRef={engineRef}
-        features={[extensionFeature]}
+        plugins={[extensionPlugin]}
         defaultValue={{ markdown: "hello", attachments: [], mentions: [], audioClips: [] }}
       />
     );
@@ -191,7 +191,7 @@ test("a feature-registered export visitor reaches the conversion", () => {
   ).toBe("exported: hello");
 });
 
-test("feature-registered export visitors can pair with toMarkdown extensions", () => {
+test("plugin-registered export visitors can pair with toMarkdown extensions", () => {
   interface TestInlineNode extends Mdast.Literal {
     type: "testInline";
     value: string;
@@ -216,7 +216,7 @@ test("feature-registered export visitors can pair with toMarkdown extensions", (
     } as never,
   };
 
-  const extensionFeature: MessageComposerFeature = {
+  const extensionPlugin: MessageComposerPlugin = {
     id: "test-to-markdown-extension",
     init: ({ engine }) => {
       engine.pub(exportVisitors$, [
@@ -234,7 +234,7 @@ test("feature-registered export visitors can pair with toMarkdown extensions", (
     return (
       <MessageComposer
         engineRef={engineRef}
-        features={[extensionFeature]}
+        plugins={[extensionPlugin]}
         defaultValue={{ markdown: "custom", attachments: [], mentions: [], audioClips: [] }}
       />
     );

@@ -12,12 +12,16 @@ export default defineConfig({
       // Registry components import the published package name; during
       // development and tests it resolves to the local source.
       {
-        find: "@mdxeditor/message-composer/features/agent-settings",
-        replacement: fileURLToPath(new URL("src/features/agent-settings/index.ts", import.meta.url)),
+        find: "@mdxeditor/message-composer/plugins/agent-settings",
+        replacement: fileURLToPath(new URL("src/plugins/agent-settings/index.ts", import.meta.url)),
       },
       {
-        find: "@mdxeditor/message-composer/features/formatting",
-        replacement: fileURLToPath(new URL("src/features/formatting/index.tsx", import.meta.url)),
+        find: "@mdxeditor/message-composer/plugins/formatting",
+        replacement: fileURLToPath(new URL("src/plugins/formatting/index.tsx", import.meta.url)),
+      },
+      {
+        find: "@mdxeditor/message-composer/plugins/mentions",
+        replacement: fileURLToPath(new URL("src/plugins/mentions/index.ts", import.meta.url)),
       },
       {
         find: "@mdxeditor/message-composer",
@@ -133,8 +137,9 @@ export default defineConfig({
   pack: {
     entry: {
       index: "src/index.ts",
-      "features/agent-settings": "src/features/agent-settings/index.ts",
-      "features/formatting": "src/features/formatting/index.tsx",
+      "plugins/agent-settings": "src/plugins/agent-settings/index.ts",
+      "plugins/formatting": "src/plugins/formatting/index.tsx",
+      "plugins/mentions": "src/plugins/mentions/index.ts",
     },
     dts: {
       tsgo: true,

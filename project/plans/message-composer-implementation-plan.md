@@ -1,10 +1,10 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–5 and 5A implemented (2026-06-12)
+Status: active — stages 1–6 and 5A implemented (2026-06-12)
 
 ## Goal
 
-Build the message composer as a React component whose core owns editing semantics, value shape, feature behavior, and integration points, while first-party polished UI is delivered as optional shadcn/Base UI registry components.
+Build the message composer as a React component whose core owns editing semantics, value shape, plugin behavior, and integration points, while first-party polished UI is delivered as optional shadcn/Base UI registry components.
 
 The core package should be useful without Tailwind, shadcn/ui, or Base UI. The registry UI should be a supported layer over stable core APIs, not a required dependency of the composer.
 
@@ -12,24 +12,24 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: feature/slot plumbing, formatting behavior, and the agent-settings feature with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The next run starts at stage 6 (mentions), which should register its serialization through the visitor registries (ADR 0006).
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The next run starts at stage 7 (attachments).
 
 ## Architectural Principles
 
 - Use Lexical for the editable surface, document model, editor commands, custom nodes, selection, history, markdown import/export, and rich text paste normalization.
-- Use `@virtuoso.dev/reactive-engine-core` and `@virtuoso.dev/reactive-engine-react` for cross-component state, commands, feature wiring, and advanced external control. The unscoped `reactive-engine` package on npm is unrelated third-party code — never install it.
+- Use `@virtuoso.dev/reactive-engine-core` and `@virtuoso.dev/reactive-engine-react` for cross-component state, commands, plugin wiring, and advanced external control. The unscoped `reactive-engine` package on npm is unrelated third-party code — never install it.
 - Read the `reactive-engine` skill (`.agents/skills/reactive-engine/`) before writing engine code. It documents node types, engine lifecycle, React integration, and the library-building pattern this composer follows.
 - Define reactive-engine nodes at module scope and create one engine per composer instance through `EngineProvider`.
 - Keep React components projection-oriented: read cells, publish streams, and delegate behavior to Lexical commands or engine wiring.
-- Model features as optional behavior modules first. UI for those features is a separate layer.
-- Implement first-party UI as shadcn/Base UI registry items that consume the same feature contracts, slots, and exported reactive nodes available to custom UI.
+- Model plugins as optional behavior modules first. UI for those plugins is a separate layer.
+- Implement first-party UI as shadcn/Base UI registry items that consume the same plugin contracts, slots, and exported reactive nodes available to custom UI.
 - Keep the core npm package free from first-party registry UI imports.
 
 ## Target Layers
 
 1. **Core value and engine layer**
    - Types for `MessageComposerValue`, attachments, mentions, audio clips, agent settings, and extensions.
-   - Engine nodes for draft value, lifecycle state, submit/reset commands, validation, and feature registration.
+   - Engine nodes for draft value, lifecycle state, submit/reset commands, validation, and plugin registration.
    - Public controlled/uncontrolled value API.
 
 2. **Lexical adapter layer**
@@ -37,10 +37,10 @@ The first `/goal` run (completed 2026-06-12) covered development sequence stages
    - Bridge between Lexical editor state and the reactive draft value.
    - Custom Lexical nodes for mentions and other inline structured content.
 
-3. **Optional feature behavior layer**
-   - Feature modules attach lazy reactive-engine wiring and Lexical plugins/commands.
-   - Features expose state cells, command streams, config types, and slot contracts.
-   - No feature behavior should require the first-party UI implementation.
+3. **Optional plugin behavior layer**
+   - Plugin modules attach lazy reactive-engine wiring and Lexical plugins/commands.
+   - Plugins expose state cells, command streams, config types, and slot contracts.
+   - No plugin behavior should require the first-party UI implementation.
 
 4. **Core React projection layer**
    - Minimal composer shell, editable area, slot rendering, and provider setup.
@@ -50,7 +50,7 @@ The first `/goal` run (completed 2026-06-12) covered development sequence stages
 5. **First-party registry UI layer**
    - shadcn/Base UI components for toolbar, pickers, menus, dialogs, mention list, attachment preview, link editor, and model/effort picker.
    - Distributed through the shadcn GitHub registry.
-   - Installable feature-by-feature where practical.
+   - Installable plugin-by-plugin where practical.
 
 ## Public API Direction
 
@@ -62,7 +62,7 @@ export interface MessageComposerProps<TValue extends MessageComposerValue = Mess
   defaultValue?: TValue;
   onValueChange?: (value: TValue) => void;
   onSubmit?: (value: TValue) => void | Promise<void>;
-  features?: MessageComposerFeature[];
+  plugins?: MessageComposerPlugin[];
   slots?: MessageComposerSlots;
   engineId?: string;
   engineRef?: React.Ref<MessageComposerEngineRef>;
@@ -70,18 +70,18 @@ export interface MessageComposerProps<TValue extends MessageComposerValue = Mess
 }
 ```
 
-Feature modules should be plain values/functions:
+Plugin modules should be plain values/functions:
 
 ```ts
-export interface MessageComposerFeature {
+export interface MessageComposerPlugin {
   id: string;
-  init?: (context: MessageComposerFeatureContext) => void | (() => void);
+  init?: (context: MessageComposerPluginContext) => void | (() => void);
   lexicalPlugins?: MessageComposerLexicalPlugin[];
   slots?: Partial<MessageComposerSlots>;
 }
 ```
 
-The exact shape can change during implementation, but the direction should remain: feature behavior and state are independent from any specific UI library.
+The exact shape can change during implementation, but the direction should remain: plugin behavior and state are independent from any specific UI library.
 
 ### Value Semantics
 
@@ -144,9 +144,9 @@ Validation:
 ### 4. Build Formatting Behavior Before Formatting UI
 
 - Implement formatting commands for bold, italic, strikethrough, inline code, code blocks, lists, blockquotes, and links.
-- Expose formatting state cells through `@mdxeditor/message-composer/features/formatting` so any toolbar can show active/disabled state without importing other optional features.
+- Expose formatting state cells through `@mdxeditor/message-composer/plugins/formatting` so any toolbar can show active/disabled state without importing other optional plugins.
 - Add markdown shortcuts where Lexical support is appropriate.
-- Keep toolbar UI out of the core feature behavior.
+- Keep toolbar UI out of the core plugin behavior.
 
 Validation:
 
@@ -155,20 +155,20 @@ Validation:
 - Structured Ladle stories using first-party shadcn/Base UI toolbar components once available.
 - Vitest Browser Mode tests for toolbar clicks, active formatting state, keyboard shortcuts, and markdown serialization.
 
-### 5. Prove Optional Feature Architecture With Model/Effort Picker
+### 5. Prove Optional Plugin Architecture With Model/Effort Picker
 
-- Decided 2026-06-12: the public feature id is `agent-settings` (source directory and registry item follow it); the model/effort picker is its first UI surface.
-- Implement an agent settings feature because it does not depend on complex Lexical nodes.
+- Decided 2026-06-12: the public plugin id is `agent-settings` (source directory and registry item follow it); the model/effort picker is its first UI surface.
+- Implement an agent settings plugin because it does not depend on complex Lexical nodes.
 - Add `agent.modelId` and `agent.effort` value integration.
-- Expose option config, selected state, and selection commands through `@mdxeditor/message-composer/features/agent-settings`.
+- Expose option config, selected state, and selection commands through `@mdxeditor/message-composer/plugins/agent-settings`.
 - Build the first shadcn/Base UI registry component for the picker.
-- Use this feature to validate registry packaging, slot integration, and custom UI replacement.
+- Use this plugin to validate registry packaging, slot integration, and custom UI replacement.
 
 Validation:
 
 - Core tests for agent value updates without UI.
 - Registry UI story showing the first-party picker.
-- Custom UI story showing the same feature controlled without registry UI.
+- Custom UI story showing the same plugin controlled without registry UI.
 - Vitest Browser Mode tests for opening the picker, keyboard navigation, selection, focus return, and submitted value payload.
 
 ### 5A. Replace Transformer Conversion With The mdast Visitor Pipeline
@@ -177,7 +177,7 @@ Port the bidirectional markdown system from `../editor` (MDXEditor): mdast parse
 
 - Port the visitor cores (`importMarkdownToLexical`, `exportMarkdownFromLexical`), stripping or parameterizing MDXEditor-specific descriptor concepts (JSX, directives, code-block editors).
 - Model the registries as module-scope cells with appender streams (`importVisitors$`, `exportVisitors$`, `syntaxExtensions$`, `mdastExtensions$`, `toMarkdownExtensions$`). Decided 2026-06-12: these stay internal — no new package exports; the extension surface goes public no earlier than stage 6, superseding the old transformer-exposure question.
-- Core registers visitors for the full MVP subset (root, paragraph, text formats, linebreak, lists, blockquote, fenced code, link) so import/export works with no features enabled. GFM strikethrough comes from the micromark/mdast extension pair.
+- Core registers visitors for the full MVP subset (root, paragraph, text formats, linebreak, lists, blockquote, fenced code, link) so import/export works with no plugins enabled. GFM strikethrough comes from the micromark/mdast extension pair.
 - Decided 2026-06-12: serialization adopts the editor repository's `toMarkdown` defaults. Emitted markdown strings change dialect; existing exact-string test assertions update accordingly, and the change is recorded as a decision doc since it alters the public value contract.
 - `$importMarkdown`/`$exportMarkdown` keep their signatures; the engine bridge, sync tags, echo logic, and revert mechanism stay untouched.
 - Markdown typing shortcuts continue to use the `@lexical/markdown` transformer subset (the same coexistence the editor repository uses).
@@ -187,17 +187,19 @@ Port the bidirectional markdown system from `../editor` (MDXEditor): mdast parse
 Validation:
 
 - Round-trip unit tests for every construct in the MVP subset: import→export stability and export→import fidelity, including nested cases (formatted text inside list items, multi-paragraph quotes).
-- Engine-level tests proving a registered visitor/extension reaches the conversion (the feature extension path works).
+- Engine-level tests proving a registered visitor/extension reaches the conversion (the plugin extension path works).
 - All existing unit and browser suites pass, with exact-string assertions migrated to the adopted dialect.
 - Ladle story presenting a markdown round-trip scenario fixture (markdown in, editor, emitted markdown out) for manual inspection.
 - `vp check`, `vp test`, and `vp pack` pass; the dist externals include the new dependencies.
 
 ### 6. Add Mentions
 
-- Add mention config with trigger characters, async search providers, result metadata, and insertion behavior.
-- Add Lexical mention node rendering and deletion-as-unit behavior.
+Implemented 2026-06-12; mechanics recorded in [ADR 0009](../decisions/0009-mention-node-and-derived-sidecar-mechanics.md).
+
+- Add mention config with trigger characters, async search providers, result metadata, and insertion behavior. Decided 2026-06-12: `mentionsPlugin({ providers, menu, token })` — providers pair a single-character trigger with an abortable async search; menu and token are optional components, so the package stays headless without registry UI.
+- Add Lexical mention node rendering and deletion-as-unit behavior. Decided 2026-06-12: `MentionNode` is an inline DecoratorNode (React-rendered token via the `mentionTokenComponent$` cell, atomic deletion by construction); the plugin contract gained `lexicalNodes` so plugins register node classes with the editor.
 - Add reactive state for active query, loading/error states, highlighted item, and selection commands.
-- Serialize mentions per [ADR 0008](../decisions/0008-mention-link-serialization.md): link-form markdown `[@Ada](mention:u1)` with identity in the `mention:` scheme URL; the `mentions` sidecar is derived from the document in occurrence order, never authoritative. The mentions feature registers a high-priority link visitor through the visitor registries (ADR 0006).
+- Serialize mentions per [ADR 0008](../decisions/0008-mention-link-serialization.md): link-form markdown `[@Ada](mention:u1)` with identity in the `mention:` scheme URL; the `mentions` sidecar is derived from the document in occurrence order, never authoritative. The mentions plugin registers a high-priority link visitor through the visitor registries (ADR 0006). Decided 2026-06-12: sidecar derivation goes through the `editorValuePatchers$` axis — patchers run inside the same editor state read as the markdown export and fold into one `editorPatch$` emission, keeping derived fields atomic with the markdown; engine-applied markdown re-derives silently into the uncontrolled draft.
 - Build registry UI for autocomplete list and mention token rendering.
 
 Validation:
@@ -264,9 +266,9 @@ Validation:
 ### 11. Formalize Registry Distribution
 
 - Add root `registry.json`.
-- Split installable registry items by feature where practical.
+- Split installable registry items by plugin where practical.
 - Add shared registry utilities/styles only when duplication justifies them.
-- Document install paths for each first-party UI feature.
+- Document install paths for each first-party UI plugin.
 - Add validation for registry files to CI once release setup exists.
 
 Validation:
@@ -275,19 +277,19 @@ Validation:
 - Fresh-app smoke test installing at least the composer shell, formatting toolbar, model picker, mentions UI, and attachments UI.
 - Vitest Browser Mode smoke test against installed registry components in a clean fixture app.
 
-## Suggested Feature Order
+## Suggested Implementation Order
 
 1. Value model and reactive-engine core.
 2. Lexical plain markdown editor.
 3. Formatting behavior.
-4. Model/effort picker feature and registry UI.
+4. Model/effort picker plugin and registry UI.
 5. Mentions behavior and registry UI.
 6. Attachments behavior and registry UI.
 7. Link editing and auto-linking.
 8. Slash commands and context chips.
 9. Audio capture.
 
-The model/effort picker should come before mentions and attachments because it proves feature registration, submitted value integration, slots, and registry UI without requiring custom Lexical nodes or file lifecycle complexity.
+The model/effort picker should come before mentions and attachments because it proves plugin registration, submitted value integration, slots, and registry UI without requiring custom Lexical nodes or file lifecycle complexity.
 
 ## Package And Source Layout Direction
 
@@ -297,7 +299,7 @@ src/
     value.ts
     engine.ts
     nodes.ts
-    feature.ts
+    plugin.ts
   lexical/
     MessageComposerLexical.tsx
     markdown.ts
@@ -307,7 +309,7 @@ src/
     MessageComposer.tsx
     slots.tsx
     hooks.ts
-  features/
+  plugins/
     formatting/
     agent-settings/
     mentions/
@@ -319,30 +321,30 @@ src/
 registry/
   registry.json
   components/
-  features/
+  plugins/
 ```
 
-This layout is provisional. The important rule is that `src/features/*` contains reusable behavior and contracts, while `registry/*` contains first-party installable UI.
+This layout is provisional. The important rule is that `src/plugins/*` contains reusable behavior and contracts, while `registry/*` contains first-party installable UI.
 
 ## Validation Strategy
 
 - `vp check` remains the formatting/lint/type gate.
-- `vp test` covers engine reducers, feature wiring, Lexical serialization, and React integration that does not need a real browser.
-- Engine tests are required for every feature that adds reactive-engine nodes, streams, reducers, or feature initialization.
+- `vp test` covers engine reducers, plugin wiring, Lexical serialization, and React integration that does not need a real browser.
+- Engine tests are required for every plugin that adds reactive-engine nodes, streams, reducers, or plugin initialization.
 - Vitest Browser Mode is the default browser-test infrastructure for user-facing workflows that depend on DOM selection, focus, keyboard navigation, clipboard, drag/drop, popovers, dialogs, or real browser event behavior.
 - Do not assume Playwright as the default browser-test runner. Add a different browser runner only when Vitest Browser Mode cannot cover a specific workflow.
 - Ladle stories cover interactive scenarios and act as the browser-test fixture surface.
 - Core tests should not depend on shadcn/Base UI registry components.
-- Registry UI should have stories that prove both default UI and custom UI can coexist over the same core feature behavior.
+- Registry UI should have stories that prove both default UI and custom UI can coexist over the same core plugin behavior.
 - First-party interactive stories should use the shadcn/Base UI components once those components exist.
 
 ## Engine Test Requirements
 
-Every feature with engine state should include pure engine tests that instantiate an `Engine`, activate the relevant nodes, publish commands, and assert resulting cells or emitted streams.
+Every plugin with engine state should include pure engine tests that instantiate an `Engine`, activate the relevant nodes, publish commands, and assert resulting cells or emitted streams.
 
 Engine tests should cover:
 
-- initial state and feature initialization
+- initial state and plugin initialization
 - controlled prop seeding and prop updates where relevant
 - command streams and reducer behavior
 - callback bridging through singleton subscriptions
@@ -370,7 +372,7 @@ When browser APIs are hard to automate, prefer stories with deterministic mocks 
 
 ## Ladle Story Requirements
 
-Stories should be structured as scenario fixtures, not ad hoc demos. Each implemented feature should add stories that make states and transitions easy to inspect manually and reuse in browser tests.
+Stories should be structured as scenario fixtures, not ad hoc demos. Each implemented plugin should add stories that make states and transitions easy to inspect manually and reuse in browser tests.
 
 Recommended story grouping:
 
@@ -387,24 +389,24 @@ SlashCommands/Menu
 Audio/RecordingLifecycle
 ```
 
-Each feature should include stories for:
+Each plugin should include stories for:
 
 - default first-party shadcn/Base UI
-- custom UI over the same core feature contracts
+- custom UI over the same core plugin contracts
 - loading, empty, error, disabled, and edge states where applicable
 - submitted value inspection
 
-Use first-party shadcn/Base UI components for the main interactive stories once the relevant registry component exists. Minimal unstyled stories are allowed only while the registry component for that feature has not been built yet, or when the story is specifically proving custom UI.
+Use first-party shadcn/Base UI components for the main interactive stories once the relevant registry component exists. Minimal unstyled stories are allowed only while the registry component for that plugin has not been built yet, or when the story is specifically proving custom UI.
 
 ## Implementation Notes From Stages 1–3
 
 API deltas relative to the sketches above:
 
 - `engineRef` takes the `EngineRef` type from `@virtuoso.dev/reactive-engine-react` (created with `useEngineRef()`), not a `React.Ref`. Remote hooks and `EngineRef` are re-exported from the package index.
-- A minimal `MessageComposerHandle` (`focus`/`reset`/`submit`) is exposed through the `ref` prop (ADR 0004). Feature commands must not grow onto this handle.
+- A minimal `MessageComposerHandle` (`focus`/`reset`/`submit`) is exposed through the `ref` prop (ADR 0004). Plugin commands must not grow onto this handle.
 - `editorProps` targets the Lexical `ContentEditable` div (`HTMLAttributes<HTMLDivElement>` plus a string `placeholder`), not a textarea.
 - The Lexical editor instance is exported as the `lexicalEditor$` cell (lexical layer, not core) as the advanced escape hatch.
-- Enter-to-submit is handled inside Lexical via `KEY_ENTER_COMMAND` at high priority; `editorProps.onKeyDown` cannot preempt it. Configurable submit behavior remains future feature work.
+- Enter-to-submit is handled inside Lexical via `KEY_ENTER_COMMAND` at high priority; `editorProps.onKeyDown` cannot preempt it. Configurable submit behavior remains future work.
 
 Engine integration constraints discovered during implementation (encoded in code comments, repeated here for future goal runs):
 
@@ -415,11 +417,11 @@ Engine integration constraints discovered during implementation (encoded in code
 
 ## Implementation Notes From Stages 4–5
 
-- The feature/slot contract is recorded in ADR 0005: `features` is construction-time configuration, slots are `header`/`toolbar`/`footer`, host slots override feature slots, and command streams are declared non-distinct because commands are events.
+- The plugin/slot contract is recorded in ADR 0005: `plugins` is construction-time configuration, slots are `header`/`toolbar`/`footer`, host slots override plugin slots, and command streams are declared non-distinct because commands are events.
 - The markdown transformer subset (`MARKDOWN_TRANSFORMERS`) stays internal; the open question about exposing it for user extension is deferred until a concrete extension need appears.
 - Lexical's markdown shortcut listener only fires when the anchor advances like real typing (one character per update), and a converted text-format shortcut intentionally leaves the caret outside the format. Tests must type character-by-character and not expect active formatting state after conversion.
-- Optional feature behavior APIs are package subpaths, not root exports: `@mdxeditor/message-composer/features/formatting` and `@mdxeditor/message-composer/features/agent-settings`. The root package exports the composer, core value/nodes, slots, remote hooks, and the Lexical editor escape hatch.
-- Registry layout: `registry/components/<feature>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and feature subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
+- Optional plugin behavior APIs are package subpaths, not root exports: `@mdxeditor/message-composer/plugins/formatting` and `@mdxeditor/message-composer/plugins/agent-settings`. The root package exports the composer, core value/nodes, slots, remote hooks, and the Lexical editor escape hatch.
+- Registry layout: `registry/components/<plugin>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and plugin subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
 - Tailwind v4 is dev-only (stories and registry development) via `@tailwindcss/vite` in both vite configs and an `@source "../../registry"` directive; the npm package remains Tailwind-free.
 - Browser-test gotcha: pressing the non-native modifier is not a no-op on macOS — Ctrl+letter combos are Cocoa caret-movement bindings that collapse the selection. Pick the modifier from `navigator.platform`.
 
@@ -435,6 +437,6 @@ When a goal run hits an item from Open Questions or a new ambiguity:
 ## Open Questions
 
 - Whether the core package should include a minimal unstyled toolbar example, or keep all toolbar UI in registry items.
-- When and how the mdast visitor registration axes become public extension API (no earlier than stage 6).
+- When and how the mdast visitor registration axes become public extension API. Stage 6 consumed them internally (the mentions plugin registers its visitors and a value patcher through the registry cells), which validated the shape without exporting it; opening the axes to third-party plugins remains undecided.
 - Whether attachment upload cancellation should be required in the host upload contract.
-- How registry items should be grouped: per feature, per surface, or bundled presets.
+- How registry items should be grouped: per plugin, per surface, or bundled presets.

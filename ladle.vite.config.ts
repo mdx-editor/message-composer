@@ -9,12 +9,16 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: "@mdxeditor/message-composer/features/agent-settings",
-        replacement: fileURLToPath(new URL("src/features/agent-settings/index.ts", import.meta.url)),
+        find: "@mdxeditor/message-composer/plugins/agent-settings",
+        replacement: fileURLToPath(new URL("src/plugins/agent-settings/index.ts", import.meta.url)),
       },
       {
-        find: "@mdxeditor/message-composer/features/formatting",
-        replacement: fileURLToPath(new URL("src/features/formatting/index.tsx", import.meta.url)),
+        find: "@mdxeditor/message-composer/plugins/formatting",
+        replacement: fileURLToPath(new URL("src/plugins/formatting/index.tsx", import.meta.url)),
+      },
+      {
+        find: "@mdxeditor/message-composer/plugins/mentions",
+        replacement: fileURLToPath(new URL("src/plugins/mentions/index.ts", import.meta.url)),
       },
       {
         find: "@mdxeditor/message-composer",

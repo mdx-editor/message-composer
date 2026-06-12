@@ -20,7 +20,7 @@ import {
   type LexicalEditor,
 } from "lexical";
 
-import type { MessageComposerFeature } from "../../core/feature.ts";
+import type { MessageComposerPlugin } from "../../core/plugin.ts";
 import { MARKDOWN_TRANSFORMERS } from "../../lexical/markdown.ts";
 import { lexicalEditor$ } from "../../lexical/nodes.ts";
 
@@ -177,7 +177,7 @@ function trackFormattingState(engine: Engine) {
   };
 }
 
-export function formattingFeature(): MessageComposerFeature {
+export function formattingPlugin(): MessageComposerPlugin {
   return {
     id: "formatting",
     init: ({ engine }) => trackFormattingState(engine),

@@ -6,7 +6,7 @@ import {
   modelOptions$,
   selectEffort$,
   selectModel$,
-} from "@mdxeditor/message-composer/features/agent-settings";
+} from "@mdxeditor/message-composer/plugins/agent-settings";
 
 import { cn } from "../../lib/utils.ts";
 

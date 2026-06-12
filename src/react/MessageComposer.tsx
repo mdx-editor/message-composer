@@ -1,7 +1,6 @@
 import { EngineProvider, type EngineRef } from "@virtuoso.dev/reactive-engine-react";
 import { forwardRef, useRef, useState, type ReactElement, type Ref, type RefAttributes } from "react";
 
-import type { MessageComposerFeature, MessageComposerSlots } from "../core/feature.ts";
 import {
   controlled$,
   disabled$,
@@ -10,6 +9,7 @@ import {
   valueChange$,
   type MessageComposerSubmitHandler,
 } from "../core/nodes.ts";
+import type { MessageComposerPlugin, MessageComposerSlots } from "../core/plugin.ts";
 import { createEmptyMessageComposerValue, type MessageComposerValue } from "../core/value.ts";
 import {
   MessageComposerLexical,
@@ -31,7 +31,7 @@ export interface MessageComposerProps<TValue extends MessageComposerValue = Mess
    * captured on first render, like Lexical's initial config. Use `slots` for
    * UI that needs to change between renders.
    */
-  features?: MessageComposerFeature[];
+  plugins?: MessageComposerPlugin[];
   slots?: Partial<MessageComposerSlots>;
   engineId?: string;
   engineRef?: EngineRef;
@@ -47,7 +47,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
     onSubmit,
     disabled = false,
     editorProps,
-    features,
+    plugins,
     slots,
     engineId,
     engineRef,
@@ -55,7 +55,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
   ref: Ref<MessageComposerHandle>
 ) {
   const isControlled = value !== undefined;
-  const [stableFeatures] = useState(() => features ?? []);
+  const [stablePlugins] = useState(() => plugins ?? []);
 
   const initialModeRef = useRef(isControlled);
   if (initialModeRef.current !== isControlled) {
@@ -78,8 +78,8 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
           [draftValue$]: value ?? defaultValue ?? createEmptyMessageComposerValue(),
           [submitHandler$]: (onSubmit as MessageComposerSubmitHandler | undefined) ?? null,
         });
-        for (const feature of stableFeatures) {
-          const cleanup = feature.init?.({ engine });
+        for (const plugin of stablePlugins) {
+          const cleanup = plugin.init?.({ engine });
           if (cleanup) {
             engine.onDispose(cleanup);
           }
@@ -101,7 +101,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
       engineId={engineId}
       engineRef={engineRef}
     >
-      <MessageComposerLexical editorProps={editorProps} handleRef={ref} features={stableFeatures} slots={slots} />
+      <MessageComposerLexical editorProps={editorProps} handleRef={ref} plugins={stablePlugins} slots={slots} />
     </EngineProvider>
   );
 }

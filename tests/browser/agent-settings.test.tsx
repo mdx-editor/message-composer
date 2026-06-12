@@ -67,7 +67,7 @@ test("the submitted payload carries the picked model and effort", async () => {
   await expect.element(submitted).toHaveTextContent('"agent":{"modelId":"sonnet-4-6","effort":"medium"}');
 });
 
-test("custom UI drives the same feature without the registry component", async () => {
+test("custom UI drives the same plugin without the registry component", async () => {
   const screen = renderStory(<CustomUI />);
 
   const opusButton = screen.getByRole("button", { name: "Opus 4.8" });

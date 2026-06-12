@@ -12,19 +12,21 @@ import { useCellValues, useEngine, usePublisher } from "@virtuoso.dev/reactive-e
 import { COMMAND_PRIORITY_HIGH, HISTORIC_TAG, KEY_ENTER_COMMAND } from "lexical";
 import { useEffect, useImperativeHandle, useState, type HTMLAttributes, type Ref } from "react";
 
-import { resolveSlots, type MessageComposerFeature, type MessageComposerSlots } from "../core/feature.ts";
 import {
   controlled$,
   disabled$,
+  draftValue$,
+  editorPatch$,
   markdown$,
   reset$,
-  setMarkdown$,
   submit$,
   submitError$,
   submitting$,
 } from "../core/nodes.ts";
+import { resolveSlots, type MessageComposerPlugin, type MessageComposerSlots } from "../core/plugin.ts";
+import type { MessageComposerValue } from "../core/value.ts";
 import { $exportMarkdown, $importMarkdown, markdownConversionOptionsFromEngine } from "./markdown.ts";
-import { lexicalEditor$ } from "./nodes.ts";
+import { editorValuePatchers$, lexicalEditor$, type EditorValuePatcher } from "./nodes.ts";
 
 export interface MessageComposerEditorProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -46,21 +48,41 @@ export interface MessageComposerHandle {
 
 const ENGINE_SYNC_TAG = "message-composer-engine-sync";
 
+/** Must run inside an editor state read so patchers can use `$` functions. */
+function runValuePatchers(
+  patchers: EditorValuePatcher[],
+  base: Partial<MessageComposerValue>
+): Partial<MessageComposerValue> {
+  let patch = base;
+  for (const patcher of patchers) {
+    patch = { ...patch, ...patcher() };
+  }
+  return patch;
+}
+
 export function MessageComposerLexical({
   editorProps,
   handleRef,
-  features = [],
+  plugins = [],
   slots,
 }: {
   editorProps?: MessageComposerEditorProps;
   handleRef?: Ref<MessageComposerHandle>;
-  features?: readonly MessageComposerFeature[];
+  plugins?: readonly MessageComposerPlugin[];
   slots?: Partial<MessageComposerSlots>;
 }) {
   const engine = useEngine();
   const [initialConfig] = useState(() => ({
     namespace: "message-composer",
-    nodes: [CodeNode, CodeHighlightNode, ListNode, ListItemNode, QuoteNode, LinkNode],
+    nodes: [
+      CodeNode,
+      CodeHighlightNode,
+      ListNode,
+      ListItemNode,
+      QuoteNode,
+      LinkNode,
+      ...plugins.flatMap((plugin) => plugin.lexicalNodes ?? []),
+    ],
     onError: (error: Error) => {
       throw error;
     },
@@ -69,8 +91,8 @@ export function MessageComposerLexical({
       $importMarkdown(engine.getValue(markdown$), markdownConversionOptionsFromEngine(engine));
     },
   }));
-  const [featurePlugins] = useState(() => features.flatMap((feature) => feature.lexicalPlugins ?? []));
-  const resolvedSlots = resolveSlots(features, slots);
+  const [pluginComponents] = useState(() => plugins.flatMap((plugin) => plugin.lexicalPlugins ?? []));
+  const resolvedSlots = resolveSlots(plugins, slots);
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
@@ -78,7 +100,7 @@ export function MessageComposerLexical({
       <HistoryPlugin />
       <EngineBridgePlugin />
       <SubmitShortcutPlugin />
-      {featurePlugins.map((Plugin, index) => (
+      {pluginComponents.map((Plugin, index) => (
         <Plugin key={index} />
       ))}
     </LexicalComposer>
@@ -180,6 +202,26 @@ function EngineBridgePlugin() {
       }
     };
 
+    // Engine-applied markdown skips the update listener (ENGINE_SYNC_TAG), so
+    // derived fields in the uncontrolled draft the composer owns would go stale.
+    // Controlled drafts mirror the host value verbatim (ADR 0003); the host's
+    // fields stand until the next user edit derives them again.
+    const syncDerivedDraftFields = () => {
+      if (engine.getValue(controlled$)) {
+        return;
+      }
+      const patchers = engine.getValue(editorValuePatchers$);
+      if (patchers.length === 0) {
+        return;
+      }
+      const patch = editor.getEditorState().read(() => runValuePatchers(patchers, {}));
+      const draft = engine.getValue(draftValue$);
+      const keys = Object.keys(patch) as (keyof MessageComposerValue)[];
+      if (keys.some((key) => draft[key] !== patch[key])) {
+        engine.pub(draftValue$, { ...draft, ...patch });
+      }
+    };
+
     // Discrete commits keep the editor DOM synchronously consistent with the
     // engine state, so echo/revert decisions never observe a half-applied import.
     const applyMarkdown = (markdown: string) => {
@@ -189,6 +231,7 @@ function EngineBridgePlugin() {
         },
         { tag: ENGINE_SYNC_TAG, discrete: true }
       );
+      syncDerivedDraftFields();
     };
 
     // Strict-controlled hosts that do not echo the emitted value never produce a
@@ -212,6 +255,9 @@ function EngineBridgePlugin() {
     };
 
     engine.pub(lexicalEditor$, editor);
+    // The initial import (defaultValue markdown) ran before this effect, outside
+    // the update listener; derive once so the mounted draft starts consistent.
+    syncDerivedDraftFields();
 
     const unsubEngine = engine.sub(markdown$, (markdown) => {
       cancelRevert();
@@ -236,7 +282,10 @@ function EngineBridgePlugin() {
         return;
       }
       lastEditorMarkdown = markdown;
-      engine.pub(setMarkdown$, markdown);
+      const patchers = engine.getValue(editorValuePatchers$);
+      const patch =
+        patchers.length > 0 ? editorState.read(() => runValuePatchers(patchers, { markdown })) : { markdown };
+      engine.pub(editorPatch$, patch);
       if (engine.getValue(controlled$)) {
         armRevert();
       }

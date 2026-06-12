@@ -1,7 +1,7 @@
 import { Cell, e, Stream } from "@virtuoso.dev/reactive-engine-core";
 
-import type { MessageComposerFeature } from "../../core/feature.ts";
 import { agent$, controlled$, draftValue$, editorChange$ } from "../../core/nodes.ts";
+import type { MessageComposerPlugin } from "../../core/plugin.ts";
 import type { MessageComposerAgentValue, MessageComposerValue } from "../../core/value.ts";
 
 export { agent$ };
@@ -18,7 +18,7 @@ export interface MessageComposerAgentSettingsConfig {
   defaultEffort?: string;
 }
 
-/** Rich option metadata stays in feature config; only ids travel in the value (ADR 0001). */
+/** Rich option metadata stays in plugin config; only ids travel in the value (ADR 0001). */
 export const modelOptions$ = Cell<MessageComposerModelOption[]>([]);
 export const effortOptions$ = Cell<string[]>([]);
 
@@ -50,7 +50,7 @@ e.link(
   editorChange$
 );
 
-export function agentSettingsFeature(config: MessageComposerAgentSettingsConfig): MessageComposerFeature {
+export function agentSettingsPlugin(config: MessageComposerAgentSettingsConfig): MessageComposerPlugin {
   return {
     id: "agent-settings",
     init: ({ engine }) => {

@@ -70,6 +70,13 @@ export const editorChange$ = Stream<MessageComposerValue>();
 /** Replaces the markdown of the current draft, preserving structured metadata. */
 export const setMarkdown$ = Stream<string>();
 
+/**
+ * Partial draft updates from the editor bridge: the exported markdown plus any
+ * plugin-derived fields (e.g. the mentions sidecar), applied in one emission
+ * so the value never carries markdown and metadata from different documents.
+ */
+export const editorPatch$ = Stream<Partial<MessageComposerValue>>();
+
 export const submit$ = Trigger();
 export const reset$ = Trigger();
 
@@ -105,8 +112,16 @@ e.link(
 e.link(
   e.pipe(
     setMarkdown$,
+    e.map((markdown): Partial<MessageComposerValue> => ({ markdown }))
+  ),
+  editorPatch$
+);
+
+e.link(
+  e.pipe(
+    editorPatch$,
     e.withLatestFrom(draftValue$),
-    e.map(([markdown, draft]) => ({ ...draft, markdown }))
+    e.map(([patch, draft]) => ({ ...draft, ...patch }))
   ),
   editorChange$
 );

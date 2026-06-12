@@ -11,8 +11,9 @@
   "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
-    "./features/agent-settings": "./dist/features/agent-settings.mjs",
-    "./features/formatting": "./dist/features/formatting.mjs",
+    "./plugins/agent-settings": "./dist/plugins/agent-settings.mjs",
+    "./plugins/formatting": "./dist/plugins/formatting.mjs",
+    "./plugins/mentions": "./dist/plugins/mentions.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -48,6 +49,7 @@
     "@base-ui-components/react": "1.0.0-rc.0",
     "@ladle/react": "^5.1.1",
     "@lexical/headless": "0.45.0",
+    "@lexical/html": "0.45.0",
     "@tailwindcss/vite": "4.3.0",
     "@testing-library/dom": "10.4.1",
     "@testing-library/react": "16.3.2",

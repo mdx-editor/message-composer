@@ -1,13 +1,13 @@
 import { useState } from "react";
 
+import { MessageComposer, useCellValue, usePublisher, type MessageComposerValue } from "../index.ts";
 import {
-  formattingFeature,
+  formattingPlugin,
   formattingState$,
   formatText$,
   toggleBlock$,
   toggleLink$,
-} from "../features/formatting/index.tsx";
-import { MessageComposer, useCellValue, usePublisher, type MessageComposerValue } from "../index.ts";
+} from "../plugins/formatting/index.tsx";
 
 export default {
   title: "Formatting",
@@ -71,7 +71,7 @@ const UnstyledToolbar = () => {
   );
 };
 
-const features = [formattingFeature()];
+const plugins = [formattingPlugin()];
 
 export const Toolbar = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
@@ -79,7 +79,7 @@ export const Toolbar = () => {
   return (
     <div style={layoutStyle}>
       <MessageComposer
-        features={features}
+        plugins={plugins}
         slots={{ toolbar: UnstyledToolbar }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
         onValueChange={setLastChange}

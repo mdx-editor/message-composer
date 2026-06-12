@@ -36,7 +36,7 @@ export {
 
 export { lexicalEditor$ } from "./lexical/nodes.ts";
 
-export type { MessageComposerFeature, MessageComposerFeatureContext, MessageComposerSlots } from "./core/feature.ts";
+export type { MessageComposerPlugin, MessageComposerPluginContext, MessageComposerSlots } from "./core/plugin.ts";
 
 export {
   useCell,
