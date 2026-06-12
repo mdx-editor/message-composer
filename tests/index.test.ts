@@ -5,5 +5,8 @@ import { createEmptyMessageComposerValue } from "../src/index.ts";
 test("creates an empty message composer value", () => {
   expect(createEmptyMessageComposerValue()).toEqual({
     markdown: "",
+    attachments: [],
+    mentions: [],
+    audioClips: [],
   });
 });
