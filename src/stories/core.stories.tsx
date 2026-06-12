@@ -161,3 +161,49 @@ export const AsyncSubmit = () => {
     </div>
   );
 };
+
+const SAMPLE_MARKDOWN = `plain **bold** *italic* ~~struck~~ \`code\`
+
+* list item
+* another **bold** item
+
+1. ordered item
+
+> a quote
+
+\`\`\`js
+code();
+\`\`\`
+
+[a link](https://example.com)`;
+
+export const MarkdownRoundTrip = () => {
+  const engineRef = useEngineRef();
+  const publishMarkdown = useRemotePublisher(setMarkdown$, engineRef);
+  const emitted = useRemoteCellValue(markdown$, engineRef);
+  const [source, setSource] = useState(SAMPLE_MARKDOWN);
+
+  return (
+    <div style={layoutStyle}>
+      <textarea
+        aria-label="Markdown source"
+        rows={10}
+        style={inspectorStyle}
+        value={source}
+        onChange={(event) => setSource(event.target.value)}
+      />
+      <div>
+        <button type="button" onClick={() => publishMarkdown?.(source)}>
+          Load into composer
+        </button>
+      </div>
+      <MessageComposer
+        engineRef={engineRef}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+      />
+      <pre data-testid="emitted-markdown" style={inspectorStyle}>
+        {emitted ?? ""}
+      </pre>
+    </div>
+  );
+};
