@@ -1,6 +1,7 @@
 import { EngineProvider, type EngineRef } from "@virtuoso.dev/reactive-engine-react";
-import { forwardRef, useRef, type ReactElement, type Ref, type RefAttributes } from "react";
+import { forwardRef, useRef, useState, type ReactElement, type Ref, type RefAttributes } from "react";
 
+import type { MessageComposerFeature, MessageComposerSlots } from "../core/feature.ts";
 import {
   controlled$,
   disabled$,
@@ -25,6 +26,13 @@ export interface MessageComposerProps<TValue extends MessageComposerValue = Mess
   onSubmit?: (value: TValue) => void | Promise<void>;
   disabled?: boolean;
   editorProps?: MessageComposerEditorProps;
+  /**
+   * Optional behavior modules, fixed for the component lifetime: the array is
+   * captured on first render, like Lexical's initial config. Use `slots` for
+   * UI that needs to change between renders.
+   */
+  features?: MessageComposerFeature[];
+  slots?: Partial<MessageComposerSlots>;
   engineId?: string;
   engineRef?: EngineRef;
 }
@@ -39,12 +47,15 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
     onSubmit,
     disabled = false,
     editorProps,
+    features,
+    slots,
     engineId,
     engineRef,
   }: MessageComposerProps<TValue>,
   ref: Ref<MessageComposerHandle>
 ) {
   const isControlled = value !== undefined;
+  const [stableFeatures] = useState(() => features ?? []);
 
   const initialModeRef = useRef(isControlled);
   if (initialModeRef.current !== isControlled) {
@@ -67,6 +78,12 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
           [draftValue$]: value ?? defaultValue ?? createEmptyMessageComposerValue(),
           [submitHandler$]: (onSubmit as MessageComposerSubmitHandler | undefined) ?? null,
         });
+        for (const feature of stableFeatures) {
+          const cleanup = feature.init?.({ engine });
+          if (cleanup) {
+            engine.onDispose(cleanup);
+          }
+        }
       }}
       updateFn={(engine) => {
         engine.pubIn({
@@ -84,7 +101,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
       engineId={engineId}
       engineRef={engineRef}
     >
-      <MessageComposerLexical editorProps={editorProps} handleRef={ref} />
+      <MessageComposerLexical editorProps={editorProps} handleRef={ref} features={stableFeatures} slots={slots} />
     </EngineProvider>
   );
 }

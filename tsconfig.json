@@ -7,6 +7,11 @@
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "types": ["node", "react", "react-dom"],
+    "paths": {
+      "@mdxeditor/message-composer": ["./src/index.ts"],
+      "@mdxeditor/message-composer/features/agent-settings": ["./src/features/agent-settings/index.ts"],
+      "@mdxeditor/message-composer/features/formatting": ["./src/features/formatting/index.tsx"]
+    },
     "strict": true,
     "noUnusedLocals": true,
     "declaration": true,
@@ -18,5 +23,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", "registry", "vite.config.ts"]
 }

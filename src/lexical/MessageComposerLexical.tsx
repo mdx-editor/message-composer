@@ -12,6 +12,7 @@ import { useCellValues, useEngine, usePublisher } from "@virtuoso.dev/reactive-e
 import { COMMAND_PRIORITY_HIGH, HISTORIC_TAG, KEY_ENTER_COMMAND } from "lexical";
 import { useEffect, useImperativeHandle, useState, type HTMLAttributes, type Ref } from "react";
 
+import { resolveSlots, type MessageComposerFeature, type MessageComposerSlots } from "../core/feature.ts";
 import {
   controlled$,
   disabled$,
@@ -22,7 +23,7 @@ import {
   submitError$,
   submitting$,
 } from "../core/nodes.ts";
-import { $exportMarkdown, $importMarkdown } from "./markdown.ts";
+import { $exportMarkdown, $importMarkdown, markdownConversionOptionsFromEngine } from "./markdown.ts";
 import { lexicalEditor$ } from "./nodes.ts";
 
 export interface MessageComposerEditorProps extends Omit<
@@ -48,9 +49,13 @@ const ENGINE_SYNC_TAG = "message-composer-engine-sync";
 export function MessageComposerLexical({
   editorProps,
   handleRef,
+  features = [],
+  slots,
 }: {
   editorProps?: MessageComposerEditorProps;
   handleRef?: Ref<MessageComposerHandle>;
+  features?: readonly MessageComposerFeature[];
+  slots?: Partial<MessageComposerSlots>;
 }) {
   const engine = useEngine();
   const [initialConfig] = useState(() => ({
@@ -61,16 +66,21 @@ export function MessageComposerLexical({
     },
     editable: !engine.getValue(disabled$),
     editorState: () => {
-      $importMarkdown(engine.getValue(markdown$));
+      $importMarkdown(engine.getValue(markdown$), markdownConversionOptionsFromEngine(engine));
     },
   }));
+  const [featurePlugins] = useState(() => features.flatMap((feature) => feature.lexicalPlugins ?? []));
+  const resolvedSlots = resolveSlots(features, slots);
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <EditorSurface editorProps={editorProps} handleRef={handleRef} />
+      <EditorSurface editorProps={editorProps} handleRef={handleRef} slots={resolvedSlots} />
       <HistoryPlugin />
       <EngineBridgePlugin />
       <SubmitShortcutPlugin />
+      {featurePlugins.map((Plugin, index) => (
+        <Plugin key={index} />
+      ))}
     </LexicalComposer>
   );
 }
@@ -78,9 +88,11 @@ export function MessageComposerLexical({
 function EditorSurface({
   editorProps,
   handleRef,
+  slots,
 }: {
   editorProps?: MessageComposerEditorProps;
   handleRef?: Ref<MessageComposerHandle>;
+  slots?: MessageComposerSlots;
 }) {
   const [editor] = useLexicalComposerContext();
   const [disabled, submitting, submitError] = useCellValues(disabled$, submitting$, submitError$);
@@ -104,6 +116,7 @@ function EditorSurface({
   }));
 
   const { placeholder, style, ...rest } = editorProps ?? {};
+  const { header: Header, toolbar: Toolbar, footer: Footer } = slots ?? {};
 
   const stateAttributes = {
     "data-submitting": submitting || undefined,
@@ -112,37 +125,42 @@ function EditorSurface({
   };
 
   return (
-    <div className="message-composer" style={{ position: "relative" }}>
-      <RichTextPlugin
-        contentEditable={
-          placeholder === undefined ? (
-            <ContentEditable {...rest} {...stateAttributes} style={style} placeholder={null} />
-          ) : (
-            <ContentEditable
-              {...rest}
-              {...stateAttributes}
-              style={style}
-              aria-placeholder={placeholder}
-              placeholder={
-                <div
-                  className="message-composer-placeholder"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none",
-                    userSelect: "none",
-                    opacity: 0.5,
-                  }}
-                >
-                  {placeholder}
-                </div>
-              }
-            />
-          )
-        }
-        ErrorBoundary={LexicalErrorBoundary}
-      />
+    <div className="message-composer">
+      {Header ? <Header /> : null}
+      {Toolbar ? <Toolbar /> : null}
+      <div className="message-composer-editor" style={{ position: "relative" }}>
+        <RichTextPlugin
+          contentEditable={
+            placeholder === undefined ? (
+              <ContentEditable {...rest} {...stateAttributes} style={style} placeholder={null} />
+            ) : (
+              <ContentEditable
+                {...rest}
+                {...stateAttributes}
+                style={style}
+                aria-placeholder={placeholder}
+                placeholder={
+                  <div
+                    className="message-composer-placeholder"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      pointerEvents: "none",
+                      userSelect: "none",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {placeholder}
+                  </div>
+                }
+              />
+            )
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+      </div>
+      {Footer ? <Footer /> : null}
     </div>
   );
 }
@@ -167,7 +185,7 @@ function EngineBridgePlugin() {
     const applyMarkdown = (markdown: string) => {
       editor.update(
         () => {
-          $importMarkdown(markdown);
+          $importMarkdown(markdown, markdownConversionOptionsFromEngine(engine));
         },
         { tag: ENGINE_SYNC_TAG, discrete: true }
       );
@@ -213,7 +231,7 @@ function EngineBridgePlugin() {
       if (dirtyElements.size === 0 && dirtyLeaves.size === 0 && !tags.has(HISTORIC_TAG)) {
         return;
       }
-      const markdown = editorState.read(() => $exportMarkdown());
+      const markdown = editorState.read(() => $exportMarkdown(markdownConversionOptionsFromEngine(engine)));
       if (markdown === lastEditorMarkdown) {
         return;
       }

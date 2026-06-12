@@ -1,9 +1,30 @@
+import { fileURLToPath } from "node:url";
+
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: [
+      // Registry components import the published package name; during
+      // development and tests it resolves to the local source.
+      {
+        find: "@mdxeditor/message-composer/features/agent-settings",
+        replacement: fileURLToPath(new URL("src/features/agent-settings/index.ts", import.meta.url)),
+      },
+      {
+        find: "@mdxeditor/message-composer/features/formatting",
+        replacement: fileURLToPath(new URL("src/features/formatting/index.tsx", import.meta.url)),
+      },
+      {
+        find: "@mdxeditor/message-composer",
+        replacement: fileURLToPath(new URL("src/index.ts", import.meta.url)),
+      },
+    ],
+  },
   build: {
     lib: {
       entry: "src/index.ts",
@@ -110,6 +131,11 @@ export default defineConfig({
     },
   },
   pack: {
+    entry: {
+      index: "src/index.ts",
+      "features/agent-settings": "src/features/agent-settings/index.ts",
+      "features/formatting": "src/features/formatting/index.tsx",
+    },
     dts: {
       tsgo: true,
     },

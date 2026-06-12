@@ -1,0 +1,307 @@
+import { act, cleanup, render } from "@testing-library/react";
+import { Engine, type NodeRef } from "@virtuoso.dev/reactive-engine-core";
+import { $getRoot, $getSelection, $isRangeSelection, $selectAll, type LexicalEditor } from "lexical";
+import { afterEach, expect, test } from "vite-plus/test";
+
+import { controlled$, submitHandler$ } from "../src/core/nodes.ts";
+import {
+  agentSettingsFeature,
+  effortOptions$,
+  modelOptions$,
+  selectEffort$,
+  selectModel$,
+} from "../src/features/agent-settings/index.ts";
+import {
+  formattingFeature,
+  formattingState$,
+  formatText$,
+  toggleBlock$,
+  toggleLink$,
+} from "../src/features/formatting/index.tsx";
+import {
+  createEmptyMessageComposerValue,
+  draftValue$,
+  lexicalEditor$,
+  MessageComposer,
+  submit$,
+  useEngineRef,
+  valueChange$,
+  type EngineRef,
+  type MessageComposerProps,
+  type MessageComposerValue,
+} from "../src/index.ts";
+
+afterEach(cleanup);
+
+function setup(props: MessageComposerProps = {}) {
+  const captured: { engineRef: EngineRef | null } = { engineRef: null };
+  const Host = () => {
+    const engineRef = useEngineRef();
+    captured.engineRef = engineRef;
+    return <MessageComposer engineRef={engineRef} {...props} />;
+  };
+  const utils = render(<Host />);
+  const engine = captured.engineRef?.current;
+  if (!engine) {
+    throw new Error("engine not mounted");
+  }
+  const editor = engine.getValue(lexicalEditor$);
+  if (!editor) {
+    throw new Error("lexical editor not mounted");
+  }
+  return { ...utils, engine, editor };
+}
+
+function typeText(editor: LexicalEditor, text: string) {
+  act(() => {
+    editor.update(
+      () => {
+        $getRoot().selectEnd();
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(text);
+        }
+      },
+      { discrete: true }
+    );
+  });
+}
+
+// Command dispatches commit through Lexical's microtask-batched update path,
+// so emissions land after the synchronous act() returns.
+async function publish<T>(engine: Engine, node: NodeRef<T>, value: T) {
+  await act(async () => {
+    engine.pub(node, value);
+    await Promise.resolve();
+  });
+}
+
+function selectAll(editor: LexicalEditor) {
+  act(() => {
+    editor.update(
+      () => {
+        $selectAll();
+      },
+      { discrete: true }
+    );
+  });
+}
+
+test("formatText toggles inline formats and serializes to markdown", async () => {
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    features: [formattingFeature()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "hello");
+  selectAll(editor);
+
+  await publish(engine, formatText$, "bold");
+  expect(changes.at(-1)?.markdown).toBe("**hello**");
+  expect(engine.getValue(formattingState$).bold).toBe(true);
+
+  await publish(engine, formatText$, "italic");
+  expect(changes.at(-1)?.markdown).toBe("***hello***");
+  expect(engine.getValue(formattingState$).italic).toBe(true);
+
+  await publish(engine, formatText$, "bold");
+  await publish(engine, formatText$, "italic");
+  expect(changes.at(-1)?.markdown).toBe("hello");
+  expect(engine.getValue(formattingState$).bold).toBe(false);
+});
+
+test("strikethrough and inline code serialize to markdown", async () => {
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    features: [formattingFeature()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "text");
+  selectAll(editor);
+
+  await publish(engine, formatText$, "strikethrough");
+  expect(changes.at(-1)?.markdown).toBe("~~text~~");
+
+  await publish(engine, formatText$, "strikethrough");
+  await publish(engine, formatText$, "code");
+  expect(changes.at(-1)?.markdown).toBe("`text`");
+});
+
+test("toggleBlock switches between paragraph, quote, code, and lists", async () => {
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    features: [formattingFeature()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "hello");
+  selectAll(editor);
+
+  await publish(engine, toggleBlock$, "quote");
+  expect(changes.at(-1)?.markdown).toBe("> hello");
+  expect(engine.getValue(formattingState$).blockType).toBe("quote");
+
+  await publish(engine, toggleBlock$, "quote");
+  expect(changes.at(-1)?.markdown).toBe("hello");
+  expect(engine.getValue(formattingState$).blockType).toBe("paragraph");
+
+  await publish(engine, toggleBlock$, "ul");
+  expect(changes.at(-1)?.markdown).toBe("* hello");
+  expect(engine.getValue(formattingState$).blockType).toBe("ul");
+
+  await publish(engine, toggleBlock$, "ol");
+  expect(changes.at(-1)?.markdown).toBe("1. hello");
+  expect(engine.getValue(formattingState$).blockType).toBe("ol");
+
+  await publish(engine, toggleBlock$, "ol");
+  expect(changes.at(-1)?.markdown).toBe("hello");
+
+  await publish(engine, toggleBlock$, "code");
+  expect(changes.at(-1)?.markdown).toBe("```\nhello\n```");
+  expect(engine.getValue(formattingState$).blockType).toBe("code");
+});
+
+test("toggleLink wraps and unwraps the selection", async () => {
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    features: [formattingFeature()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "docs");
+  selectAll(editor);
+
+  await publish(engine, toggleLink$, "https://example.com");
+  expect(changes.at(-1)?.markdown).toBe("[docs](https://example.com)");
+
+  selectAll(editor);
+  expect(engine.getValue(formattingState$).link).toBe(true);
+
+  await publish(engine, toggleLink$, null);
+  expect(changes.at(-1)?.markdown).toBe("docs");
+});
+
+test("markdown text-format shortcuts convert typed syntax", async () => {
+  const { container, editor } = setup({ features: [formattingFeature()] });
+
+  // The shortcut listener only fires when the anchor advances like real typing,
+  // one character per update.
+  for (const char of "**bold**") {
+    typeText(editor, char);
+  }
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  expect(container.querySelector("strong")?.textContent).toBe("bold");
+});
+
+test("formatting state resets when the selection has no formats", () => {
+  const { engine, editor } = setup({ features: [formattingFeature()] });
+
+  typeText(editor, "plain");
+  selectAll(editor);
+
+  const state = engine.getValue(formattingState$);
+  expect(state).toEqual({
+    bold: false,
+    italic: false,
+    strikethrough: false,
+    code: false,
+    blockType: "paragraph",
+    link: false,
+  });
+});
+
+test("agent-settings: feature init seeds options and defaults into the uncontrolled draft", () => {
+  const engine = new Engine();
+  const changes: MessageComposerValue[] = [];
+  engine.sub(valueChange$, (value) => changes.push(value));
+
+  const feature = agentSettingsFeature({
+    models: [
+      { id: "fable-5", label: "Fable 5" },
+      { id: "opus-4-8", label: "Opus 4.8" },
+    ],
+    efforts: ["low", "medium", "high"],
+    defaultModelId: "fable-5",
+    defaultEffort: "medium",
+  });
+  feature.init?.({ engine });
+
+  expect(engine.getValue(modelOptions$)).toHaveLength(2);
+  expect(engine.getValue(effortOptions$)).toEqual(["low", "medium", "high"]);
+  expect(engine.getValue(draftValue$).agent).toEqual({ modelId: "fable-5", effort: "medium" });
+  expect(changes).toHaveLength(0);
+});
+
+test("agent-settings: defaults do not override an already seeded agent value", () => {
+  const engine = new Engine({
+    [draftValue$]: {
+      ...createEmptyMessageComposerValue(),
+      agent: { modelId: "opus-4-8" },
+    },
+  });
+
+  agentSettingsFeature({
+    models: [{ id: "fable-5", label: "Fable 5" }],
+    defaultModelId: "fable-5",
+    defaultEffort: "high",
+  }).init?.({ engine });
+
+  expect(engine.getValue(draftValue$).agent).toEqual({ modelId: "opus-4-8", effort: "high" });
+});
+
+test("agent-settings: controlled mode never seeds defaults", () => {
+  const engine = new Engine({ [controlled$]: true });
+
+  agentSettingsFeature({
+    models: [{ id: "fable-5", label: "Fable 5" }],
+    defaultModelId: "fable-5",
+  }).init?.({ engine });
+
+  expect(engine.getValue(draftValue$).agent).toBeUndefined();
+});
+
+test("agent-settings: selection commands update the draft and emit valueChange when uncontrolled", () => {
+  const engine = new Engine();
+  const changes: MessageComposerValue[] = [];
+  engine.sub(valueChange$, (value) => changes.push(value));
+
+  engine.pub(selectModel$, "fable-5");
+  expect(engine.getValue(draftValue$).agent?.modelId).toBe("fable-5");
+  expect(changes.at(-1)?.agent?.modelId).toBe("fable-5");
+
+  engine.pub(selectEffort$, "high");
+  expect(engine.getValue(draftValue$).agent).toEqual({ modelId: "fable-5", effort: "high" });
+  expect(changes.at(-1)?.agent).toEqual({ modelId: "fable-5", effort: "high" });
+});
+
+test("agent-settings: controlled mode emits selections without committing them", () => {
+  const seeded = { ...createEmptyMessageComposerValue(), agent: { modelId: "opus-4-8" } };
+  const engine = new Engine({ [controlled$]: true, [draftValue$]: seeded });
+  const changes: MessageComposerValue[] = [];
+  engine.sub(valueChange$, (value) => changes.push(value));
+
+  engine.pub(selectModel$, "fable-5");
+
+  expect(changes.at(-1)?.agent?.modelId).toBe("fable-5");
+  expect(engine.getValue(draftValue$)).toBe(seeded);
+});
+
+test("agent-settings: the submitted value carries the agent selection", () => {
+  const engine = new Engine();
+  const submitted: MessageComposerValue[] = [];
+  engine.pub(submitHandler$, (value) => {
+    submitted.push(value);
+  });
+
+  engine.pub(selectModel$, "fable-5");
+  engine.pub(selectEffort$, "low");
+  engine.pub(submit$, undefined);
+
+  expect(submitted).toHaveLength(1);
+  expect(submitted[0].agent).toEqual({ modelId: "fable-5", effort: "low" });
+});
