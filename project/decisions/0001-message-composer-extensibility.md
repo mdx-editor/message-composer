@@ -31,6 +31,8 @@ Agent settings that are common to AI composer use cases, such as `modelId` and `
 
 `MessageComposerProps` should not extend native `TextareaHTMLAttributes` directly. Native textarea `value`, `defaultValue`, and `onChange` conflict with the composer draft value API. Native passthrough props should live under a scoped property such as `textareaProps`.
 
+Update (2026-06-12): the scoped property is named `editorProps`, since the editable surface stops being a textarea once Lexical replaces the placeholder. The principle — no native prop surface at the top level — is unchanged. Controlled value and submit semantics are specified in [ADR 0003](0003-controlled-value-and-submit-semantics.md).
+
 ```ts
 export interface MessageComposerProps<TValue extends MessageComposerValue = MessageComposerValue> {
   value?: TValue;
