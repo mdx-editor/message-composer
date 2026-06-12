@@ -10,9 +10,9 @@ The core package should be useful without Tailwind, shadcn/ui, or Base UI. The r
 
 This document is suitable as the working context for a long-running `/goal`. It defines the objective, sequence, architecture constraints, validation gates, and open questions. Future goal-driven work should update this plan when implementation reality changes instead of treating it as throwaway planning text.
 
-## First Goal Run Scope
+## Goal Run Scope
 
-The first `/goal` run covers development sequence stages 1–3 only: core value model, reactive-engine core, and the Lexical editor surface. The run is complete when stage 3 validation passes. Stages 4 and later require new goal runs.
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run covers stages 4–5 — formatting behavior and the agent-settings feature with its registry UI — and is complete when stage 5 validation passes. Later stages require new goal runs.
 
 ## Architectural Principles
 
@@ -157,6 +157,7 @@ Validation:
 
 ### 5. Prove Optional Feature Architecture With Model/Effort Picker
 
+- Decided 2026-06-12: the public feature id is `agent-settings` (source directory and registry item follow it); the model/effort picker is its first UI surface.
 - Implement an agent settings feature because it does not depend on complex Lexical nodes.
 - Add `agent.modelId` and `agent.effort` value integration.
 - Expose option config, selected state, and selection commands through feature nodes.
@@ -407,4 +408,3 @@ When a goal run hits an item from Open Questions or a new ambiguity:
 - How much of Lexical's markdown transformer set should be exposed for user extension.
 - Whether attachment upload cancellation should be required in the host upload contract.
 - How registry items should be grouped: per feature, per surface, or bundled presets.
-- Whether model/effort picker should live under a generic `agent-settings` feature or a narrower `model-picker` feature.
