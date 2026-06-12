@@ -1,6 +1,18 @@
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  plugins: [react()],
+  build: {
+    lib: {
+      entry: "src/index.ts",
+      formats: ["es"],
+      fileName: () => "index.mjs",
+    },
+    rolldownOptions: {
+      external: ["react", "react-dom", "react/jsx-runtime"],
+    },
+  },
   fmt: {
     arrowParens: "always",
     bracketSameLine: false,

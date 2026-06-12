@@ -43,6 +43,13 @@
 - Message submission includes markdown plus attachment metadata.
 - Attachments should remain structured metadata by default instead of being forced into markdown.
 
+## Audio Capture
+
+- The composer can support recording or attaching audio clips.
+- Audio clips expose recording, processing, upload, success, error, retry, and remove states where applicable.
+- Message submission includes markdown plus audio clip metadata.
+- Audio clips should remain structured metadata by default instead of being forced into markdown.
+
 ## Paste Support
 
 - Plain text paste inserts text.
@@ -57,6 +64,8 @@
 - The composer can support slash commands.
 - The composer can support context chips, file references, prompts, or selected entities.
 - The composer can expose stop/cancel behavior for running agent responses.
+- The composer can support optional model and effort controls for agent-oriented use cases.
+- Model and effort selections should be represented in the submitted value when the feature is enabled.
 - Model, tool, or context controls should be possible around the composer without becoming hard-coded product UI.
 
 ## Accessibility
@@ -71,3 +80,6 @@
 - The component should support controlled and uncontrolled usage.
 - Host applications can customize mention sources, attachment handling, toolbar buttons, placeholder text, validation, and submit rules.
 - Styling should be themeable without requiring Tailwind, shadcn/ui, or another specific design system.
+- Formatting toolbar, model picker, mentions UI, attachment UI, slash-command UI, and similar capabilities should be optional features.
+- First-party feature UI should be available as shadcn/Base UI registry components.
+- Consumers must be able to build custom feature UI without Tailwind, shadcn/ui, or Base UI by using the same core contracts and state APIs.

@@ -23,6 +23,8 @@ pnpm 11's supply-chain policy rejected a same-day `@typescript/native-preview` b
 
 Ladle is the preferred local interactive preview tool for now.
 
+Use `vp run dev:stories` to start the local story preview.
+
 Storybook is a strong alternative if the story environment needs to become public documentation or addon-heavy component docs. Histoire is not the preferred React choice at this stage.
 
 ## Release Workflow

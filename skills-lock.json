@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "reactive-engine": {
+      "source": "virtuoso-dev/skills",
+      "sourceType": "github",
+      "skillPath": "reactive-engine/SKILL.md",
+      "computedHash": "5b31f50a83d37623c23233f84d214970881aed5766eee80f87ec863594bf7d71"
+    }
+  }
+}

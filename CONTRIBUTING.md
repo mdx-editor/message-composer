@@ -11,6 +11,8 @@ This project uses Vite+ as the primary development command surface. Prefer `vp` 
 - `vp test` runs tests.
 - `vp pack` builds the package for publishing.
 - `vp pack --watch` builds the package in watch mode.
+- `vp run dev:stories` starts the Ladle story preview.
+- `vp run build:stories` builds the Ladle story preview.
 
 `pnpm` is still the underlying package manager and owns `pnpm-lock.yaml`. Use `pnpm` directly only when `vp` does not cover the task or when debugging package-manager behavior.
 

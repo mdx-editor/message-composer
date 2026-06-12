@@ -26,5 +26,7 @@ This package uses Vite+ as the project-local toolchain.
 - `vp test` runs tests.
 - `vp pack` builds the package for publishing.
 - `vp pack --watch` builds the package in watch mode.
+- `vp run dev:stories` starts the Ladle story preview.
+- `vp run build:stories` builds the Ladle story preview.
 
 `pnpm` remains the underlying package manager and lockfile owner. Use it directly only when `vp` does not cover the task.
