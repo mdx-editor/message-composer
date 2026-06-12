@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
+import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
   plugins: [react()],
@@ -10,7 +11,13 @@ export default defineConfig({
       fileName: () => "index.mjs",
     },
     rolldownOptions: {
-      external: ["react", "react-dom", "react/jsx-runtime"],
+      external: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "@virtuoso.dev/reactive-engine-core",
+        "@virtuoso.dev/reactive-engine-react",
+      ],
     },
   },
   fmt: {
@@ -84,7 +91,7 @@ export default defineConfig({
       "unicorn/no-abusive-eslint-disable": "error",
       "unicorn/no-array-for-each": "error",
       "unicorn/no-array-reduce": "error",
-      "unicorn/no-useless-undefined": "error",
+      "unicorn/no-useless-undefined": ["error", { checkArguments: false }],
       "unicorn/prefer-add-event-listener": "error",
       "unicorn/prefer-array-find": "error",
       "unicorn/prefer-array-some": "error",
@@ -110,5 +117,31 @@ export default defineConfig({
   },
   staged: {
     "*": "vp check --fix",
+  },
+  test: {
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "happy-dom",
+          include: ["tests/**/*.test.{ts,tsx}"],
+          exclude: ["tests/browser/**"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "browser",
+          include: ["tests/browser/**/*.test.{ts,tsx}"],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
+    ],
   },
 });
