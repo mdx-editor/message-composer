@@ -6,6 +6,7 @@
 - Store exploratory notes in `project/notes/`, implementation plans in `project/plans/`, and durable decisions in `project/decisions/`.
 - PRP workflow local override: create and look for PRPs and implementation plans in `project/plans/`, not in a top-level `plans/` directory.
 - Implement composer features as optional core behavior first, with shadcn/Base UI as a separate first-party registry UI layer.
+- Export optional feature behavior through package subpaths such as `@mdxeditor/message-composer/features/<feature>`, not from the package root.
 - Add engine tests for feature state, streams, reducers, initialization, and submitted value behavior.
 - Use Vitest Browser Mode for browser tests of user-facing workflows that depend on selection, focus, keyboard navigation, paste, drag/drop, popovers, dialogs, or browser events.
 - Keep Ladle stories structured as reusable scenario fixtures, and use first-party shadcn/Base UI components for main interactive stories once those components exist.

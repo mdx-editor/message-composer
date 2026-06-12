@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–3 implemented (2026-06-12)
+Status: active — stages 1–5 and 5A implemented (2026-06-12)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run covers stages 4–5 — formatting behavior and the agent-settings feature with its registry UI — and is complete when stage 5 validation passes. Later stages require new goal runs.
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: feature/slot plumbing, formatting behavior, and the agent-settings feature with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The next run starts at stage 6 (mentions), which should register its serialization through the visitor registries (ADR 0006).
 
 ## Architectural Principles
 
@@ -144,7 +144,7 @@ Validation:
 ### 4. Build Formatting Behavior Before Formatting UI
 
 - Implement formatting commands for bold, italic, strikethrough, inline code, code blocks, lists, blockquotes, and links.
-- Expose formatting state cells so any toolbar can show active/disabled state.
+- Expose formatting state cells through `@mdxeditor/message-composer/features/formatting` so any toolbar can show active/disabled state without importing other optional features.
 - Add markdown shortcuts where Lexical support is appropriate.
 - Keep toolbar UI out of the core feature behavior.
 
@@ -160,7 +160,7 @@ Validation:
 - Decided 2026-06-12: the public feature id is `agent-settings` (source directory and registry item follow it); the model/effort picker is its first UI surface.
 - Implement an agent settings feature because it does not depend on complex Lexical nodes.
 - Add `agent.modelId` and `agent.effort` value integration.
-- Expose option config, selected state, and selection commands through feature nodes.
+- Expose option config, selected state, and selection commands through `@mdxeditor/message-composer/features/agent-settings`.
 - Build the first shadcn/Base UI registry component for the picker.
 - Use this feature to validate registry packaging, slot integration, and custom UI replacement.
 
@@ -171,12 +171,33 @@ Validation:
 - Custom UI story showing the same feature controlled without registry UI.
 - Vitest Browser Mode tests for opening the picker, keyboard navigation, selection, focus return, and submitted value payload.
 
+### 5A. Replace Transformer Conversion With The mdast Visitor Pipeline
+
+Port the bidirectional markdown system from `../editor` (MDXEditor): mdast parse/serialize with per-node-type import and export visitors. Code duplication from the editor repository is accepted; keep the visitor interface shapes close to the source so the two can be reconciled into a shared package later.
+
+- Port the visitor cores (`importMarkdownToLexical`, `exportMarkdownFromLexical`), stripping or parameterizing MDXEditor-specific descriptor concepts (JSX, directives, code-block editors).
+- Model the registries as module-scope cells with appender streams (`importVisitors$`, `exportVisitors$`, `syntaxExtensions$`, `mdastExtensions$`, `toMarkdownExtensions$`). Decided 2026-06-12: these stay internal — no new package exports; the extension surface goes public no earlier than stage 6, superseding the old transformer-exposure question.
+- Core registers visitors for the full MVP subset (root, paragraph, text formats, linebreak, lists, blockquote, fenced code, link) so import/export works with no features enabled. GFM strikethrough comes from the micromark/mdast extension pair.
+- Decided 2026-06-12: serialization adopts the editor repository's `toMarkdown` defaults. Emitted markdown strings change dialect; existing exact-string test assertions update accordingly, and the change is recorded as a decision doc since it alters the public value contract.
+- `$importMarkdown`/`$exportMarkdown` keep their signatures; the engine bridge, sync tags, echo logic, and revert mechanism stay untouched.
+- Markdown typing shortcuts continue to use the `@lexical/markdown` transformer subset (the same coexistence the editor repository uses).
+- New unified-ecosystem runtime dependencies are regular dependencies, externalized in the library build.
+- No MDX, JSX, directive, frontmatter, or table support; the extension axes exist so later stages can register them.
+
+Validation:
+
+- Round-trip unit tests for every construct in the MVP subset: import→export stability and export→import fidelity, including nested cases (formatted text inside list items, multi-paragraph quotes).
+- Engine-level tests proving a registered visitor/extension reaches the conversion (the feature extension path works).
+- All existing unit and browser suites pass, with exact-string assertions migrated to the adopted dialect.
+- Ladle story presenting a markdown round-trip scenario fixture (markdown in, editor, emitted markdown out) for manual inspection.
+- `vp check`, `vp test`, and `vp pack` pass; the dist externals include the new dependencies.
+
 ### 6. Add Mentions
 
 - Add mention config with trigger characters, async search providers, result metadata, and insertion behavior.
 - Add Lexical mention node rendering and deletion-as-unit behavior.
 - Add reactive state for active query, loading/error states, highlighted item, and selection commands.
-- Serialize mentions as structured metadata in `MessageComposerValue`; keep markdown output predictable.
+- Serialize mentions per [ADR 0008](../decisions/0008-mention-link-serialization.md): link-form markdown `[@Ada](mention:u1)` with identity in the `mention:` scheme URL; the `mentions` sidecar is derived from the document in occurrence order, never authoritative. The mentions feature registers a high-priority link visitor through the visitor registries (ADR 0006).
 - Build registry UI for autocomplete list and mention token rendering.
 
 Validation:
@@ -392,6 +413,16 @@ Engine integration constraints discovered during implementation (encoded in code
 - Strict-controlled reverts for non-echoing hosts cannot be purely reactive (no emission happens); the Lexical bridge arms a zero-delay revert timer after each controlled edit, cancelled by the echo emission, deferred while IME composition is active.
 - Engine-originated Lexical imports use discrete, tagged updates: `discrete` keeps the editor synchronously consistent with engine state; the tag breaks the editor→engine→editor feedback loop. Undo/redo restores arrive with empty dirty sets and the `historic` tag — update listeners must not treat them as selection-only changes.
 
+## Implementation Notes From Stages 4–5
+
+- The feature/slot contract is recorded in ADR 0005: `features` is construction-time configuration, slots are `header`/`toolbar`/`footer`, host slots override feature slots, and command streams are declared non-distinct because commands are events.
+- The markdown transformer subset (`MARKDOWN_TRANSFORMERS`) stays internal; the open question about exposing it for user extension is deferred until a concrete extension need appears.
+- Lexical's markdown shortcut listener only fires when the anchor advances like real typing (one character per update), and a converted text-format shortcut intentionally leaves the caret outside the format. Tests must type character-by-character and not expect active formatting state after conversion.
+- Optional feature behavior APIs are package subpaths, not root exports: `@mdxeditor/message-composer/features/formatting` and `@mdxeditor/message-composer/features/agent-settings`. The root package exports the composer, core value/nodes, slots, remote hooks, and the Lexical editor escape hatch.
+- Registry layout: `registry/components/<feature>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and feature subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
+- Tailwind v4 is dev-only (stories and registry development) via `@tailwindcss/vite` in both vite configs and an `@source "../../registry"` directive; the npm package remains Tailwind-free.
+- Browser-test gotcha: pressing the non-native modifier is not a no-op on macOS — Ctrl+letter combos are Cocoa caret-movement bindings that collapse the selection. Pick the modifier from `navigator.platform`.
+
 ## Decision Protocol
 
 When a goal run hits an item from Open Questions or a new ambiguity:
@@ -403,8 +434,7 @@ When a goal run hits an item from Open Questions or a new ambiguity:
 
 ## Open Questions
 
-- Exact markdown representation for mentions when displayed outside this component.
 - Whether the core package should include a minimal unstyled toolbar example, or keep all toolbar UI in registry items.
-- How much of Lexical's markdown transformer set should be exposed for user extension.
+- When and how the mdast visitor registration axes become public extension API (no earlier than stage 6).
 - Whether attachment upload cancellation should be required in the host upload contract.
 - How registry items should be grouped: per feature, per surface, or bundled presets.
