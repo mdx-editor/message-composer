@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–7 and 5A implemented (2026-06-12)
+Status: active — stages 1–8 and 5A implemented (2026-06-13)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar ships without a link control until stage 8 delivers the link editing surface. The next run starts at stage 8 (links), which is smaller than its section suggests (see the note there).
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The next run can start at stage 8A (markdown typing shortcut hardening).
 
 ## Architectural Principles
 
@@ -230,7 +230,7 @@ Validation:
 
 ### 8. Add Link Editing And Auto-Linking
 
-Scope note (2026-06-12): part of this stage already shipped. Stage 4 mounted `LinkPlugin`, exposed `toggleLink$` and boolean link-active state in the formatting plugin, and stage 5A ships link markdown serialization in the core visitor set. Remaining work: auto-link detection for typed/pasted URLs (`AutoLinkNode` + matchers), a richer current-link state cell (URL, text, anchor rect — reuse the mention plugin's anchor-rect pattern), edit/remove commands, and the popover registry UI. The link plugin must ignore `mention:`-scheme links so mention tokens never get a link editor.
+Implemented 2026-06-13. Stage 4 had already mounted `LinkPlugin`, exposed `toggleLink$`, and tracked boolean link-active state; stage 5A had already shipped core link markdown serialization. Stage 8 added typed/pasted URL detection with `AutoLinkNode`, a richer `currentLink$` state cell (URL, text, anchor rect), `beginLinkEdit$`/`editLink$`/`removeLink$` commands, mention-scheme link exclusion, and the Base UI popover editor in the first-party formatting toolbar.
 
 - Add typed and pasted URL detection.
 - Add link transform behavior and markdown serialization.
@@ -242,6 +242,22 @@ Validation:
 - Tests for typed URL, pasted URL, edit/remove, and markdown output.
 - Keyboard and focus tests for the link editor UI.
 - Vitest Browser Mode tests for URL typing, URL paste, editing through the popover/dialog, removing a link, and focus restoration.
+
+### 8A. Harden Markdown Typing Shortcuts
+
+Added 2026-06-13 after checking `../editor`: MDXEditor's `markdownShortcutPlugin` keeps markdown shortcuts separate from value import/export and uses Lexical transformers chosen from enabled capabilities. The composer already mounts Lexical's `MarkdownShortcutPlugin` in the formatting plugin and includes `INLINE_CODE`/`CODE`, but the plan needs an explicit follow-up to verify the user-facing shortcut behavior instead of assuming the transformer list is enough.
+
+- Audit the current `MARKDOWN_TRANSFORMERS` against MDXEditor's shortcut set and the composer's intended scope. Keep headings, thematic breaks, checklists, MDX, and table-specific behavior out unless a later composer capability explicitly adds them.
+- Verify inline code shortcuts: typing paired backticks around text, applying backticks to selected text if Lexical supports it, caret placement after conversion, and markdown serialization as inline code.
+- Verify fenced code block shortcuts separately from inline code: typing <code>```</code> plus an optional language and a trailing space should create a code block that serializes as fenced markdown and keeps Shift+Enter/plain Enter semantics coherent with composer submit behavior.
+- Decide whether fenced code blocks remain part of the formatting plugin or become their own optional `code-blocks` plugin if language editing, code-specific toolbar controls, or nested editor behavior becomes necessary.
+- Document any divergence from MDXEditor, especially the absence of headings/checklists/thematic breaks and the fact that shortcuts remain typing-time behavior while the mdast visitor pipeline owns value import/export.
+
+Validation:
+
+- Browser tests for inline-code backtick shortcuts, selected-text inline-code conversion if supported, fenced code block creation with and without language, and markdown output.
+- Regression tests that list/quote shortcuts still work and that markdown shortcut conversion does not steal focus, break IME composition, or conflict with submit/newline behavior.
+- Ladle story section showing the supported shortcuts in the formatting/custom UI scenario fixture.
 
 ### 9. Add Slash Commands And Context Chips
 
@@ -308,9 +324,10 @@ Validation:
 5. Mentions behavior and registry UI.
 6. Attachments behavior and registry UI.
 7. Link editing and auto-linking.
-8. Slash commands and context chips.
-9. Audio capture.
-10. Large-text paste-to-attachment (lower priority; possible any time after attachments, stage 7A).
+8. Markdown typing shortcut hardening.
+9. Slash commands and context chips.
+10. Audio capture.
+11. Large-text paste-to-attachment (lower priority; possible any time after attachments, stage 7A).
 
 The model/effort picker should come before mentions and attachments because it proves plugin registration, submitted value integration, slots, and registry UI without requiring custom Lexical nodes or file lifecycle complexity.
 
@@ -443,6 +460,7 @@ Engine integration constraints discovered during implementation (encoded in code
 - The plugin/slot contract is recorded in ADR 0005: `plugins` is construction-time configuration, slots are `header`/`toolbar`/`footer`, host slots override plugin slots, and command streams are declared non-distinct because commands are events.
 - The markdown transformer subset (`MARKDOWN_TRANSFORMERS`) stays internal; the open question about exposing it for user extension is deferred until a concrete extension need appears.
 - Lexical's markdown shortcut listener only fires when the anchor advances like real typing (one character per update), and a converted text-format shortcut intentionally leaves the caret outside the format. Tests must type character-by-character and not expect active formatting state after conversion.
+- MDXEditor's markdown-shortcut reference supports inline code via `` ` `` and code blocks via <code>```$lang </code>, but only when the corresponding editor capabilities are active. The composer should preserve that separation: shortcuts are typing-time UX, while mdast visitors remain authoritative for import/export.
 - Optional plugin behavior APIs are package subpaths, not root exports: `@mdxeditor/message-composer/plugins/formatting` and `@mdxeditor/message-composer/plugins/agent-settings`. The root package exports the composer, core value/nodes, slots, remote hooks, and the Lexical editor escape hatch.
 - Registry layout: `registry/components/<plugin>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and plugin subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
 - Tailwind v4 is dev-only (stories and registry development) via `@tailwindcss/vite` in both vite configs and an `@source "../../registry"` directive; the npm package remains Tailwind-free.

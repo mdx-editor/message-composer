@@ -1,14 +1,19 @@
+import { Popover } from "@base-ui-components/react/popover";
 import { Toggle } from "@base-ui-components/react/toggle";
 import { Toolbar } from "@base-ui-components/react/toolbar";
-import { useCellValue, usePublisher } from "@mdxeditor/message-composer";
+import { lexicalEditor$, useCellValue, usePublisher } from "@mdxeditor/message-composer";
 import {
+  beginLinkEdit$,
+  currentLink$,
+  editLink$,
   formattingState$,
   formatText$,
+  removeLink$,
   toggleBlock$,
   type MessageComposerBlockType,
   type MessageComposerTextFormat,
 } from "@mdxeditor/message-composer/plugins/formatting";
-import type { ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "../../lib/utils.ts";
 
@@ -59,6 +64,20 @@ function CodeIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path
         d="M6 5L3 8l3 3M10 5l3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M6.7 4.7l.7-.7a3 3 0 014.2 4.2l-.9.9a3 3 0 01-4.2 0M9.3 11.3l-.7.7a3 3 0 01-4.2-4.2l.9-.9a3 3 0 014.2 0"
         stroke="currentColor"
         strokeWidth="1.4"
         strokeLinecap="round"
@@ -161,6 +180,149 @@ const BLOCK_TYPES: { blockType: Exclude<MessageComposerBlockType, "paragraph">; 
   { blockType: "ol", label: "Numbered list", icon: <NumberedListIcon /> },
 ];
 
+function LinkControl() {
+  const triggerId = useId();
+  const currentLink = useCellValue(currentLink$);
+  const editor = useCellValue(lexicalEditor$);
+  const beginLinkEdit = usePublisher(beginLinkEdit$);
+  const editLink = usePublisher(editLink$);
+  const removeLink = usePublisher(removeLink$);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [text, setText] = useState("");
+
+  const virtualAnchor = useMemo(() => {
+    const rect = currentLink?.anchorRect;
+    if (!rect) {
+      return null;
+    }
+    return {
+      getBoundingClientRect: () => ({
+        ...rect,
+        x: rect.left,
+        y: rect.top,
+        toJSON: () => rect,
+      }),
+    };
+  }, [currentLink?.anchorRect]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setUrl(currentLink?.url ?? "");
+    setText(currentLink?.text ?? "");
+    queueMicrotask(() => inputRef.current?.focus());
+  }, [currentLink?.linkKey, currentLink?.text, currentLink?.url, open]);
+
+  const restoreFocus = () => {
+    queueMicrotask(() => editor?.focus());
+  };
+
+  return (
+    <Popover.Root
+      open={open}
+      triggerId={triggerId}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          beginLinkEdit();
+        }
+        setOpen(nextOpen);
+      }}
+    >
+      <Toolbar.Button
+        render={
+          <Popover.Trigger
+            id={triggerId}
+            aria-label="Link"
+            className={toggleClassName}
+            data-pressed={currentLink || open ? "" : undefined}
+          >
+            <LinkIcon />
+          </Popover.Trigger>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner anchor={virtualAnchor} side="top" align="center" sideOffset={8} collisionPadding={8}>
+          <Popover.Popup
+            initialFocus={inputRef}
+            finalFocus={false}
+            className={cn(
+              "z-50 grid w-72 gap-2 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-md",
+              "outline-none"
+            )}
+          >
+            <form
+              aria-label={currentLink ? "Edit link" : "Create link"}
+              className="grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                editLink({ url, text: currentLink ? text : undefined });
+                setOpen(false);
+                restoreFocus();
+              }}
+            >
+              <label className="grid gap-1 text-xs font-medium">
+                URL
+                <input
+                  ref={inputRef}
+                  aria-label="Link URL"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  className={cn(
+                    "h-8 rounded-md border border-input bg-background px-2 text-sm outline-none",
+                    "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  )}
+                />
+              </label>
+              {currentLink ? (
+                <label className="grid gap-1 text-xs font-medium">
+                  Text
+                  <input
+                    aria-label="Link text"
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    className={cn(
+                      "h-8 rounded-md border border-input bg-background px-2 text-sm outline-none",
+                      "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    )}
+                  />
+                </label>
+              ) : null}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                {currentLink ? (
+                  <button
+                    type="button"
+                    className="h-8 rounded-md px-2 text-sm text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      removeLink();
+                      setOpen(false);
+                      restoreFocus();
+                    }}
+                  >
+                    Remove link
+                  </button>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={url.trim().length === 0}
+                  className={cn(
+                    "h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground",
+                    "hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+                  )}
+                >
+                  Apply link
+                </button>
+              </div>
+            </form>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 export function FormattingToolbar({ className }: { className?: string }) {
   const state = useCellValue(formattingState$);
   const format = usePublisher(formatText$);
@@ -179,6 +341,7 @@ export function FormattingToolbar({ className }: { className?: string }) {
           {icon}
         </FormatToggle>
       ))}
+      <LinkControl />
       <Toolbar.Separator className="mx-1 h-5 w-px bg-border" />
       {BLOCK_TYPES.map(({ blockType, label, icon }) => (
         <FormatToggle

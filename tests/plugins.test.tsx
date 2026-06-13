@@ -1,6 +1,14 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { Engine, type NodeRef } from "@virtuoso.dev/reactive-engine-core";
-import { $getRoot, $getSelection, $isRangeSelection, $selectAll, type LexicalEditor } from "lexical";
+import {
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  $isTextNode,
+  $selectAll,
+  type LexicalEditor,
+} from "lexical";
 import { afterEach, expect, test } from "vite-plus/test";
 
 import { controlled$, submitHandler$ } from "../src/core/nodes.ts";
@@ -24,9 +32,12 @@ import {
   selectModel$,
 } from "../src/plugins/agent-settings/index.ts";
 import {
+  currentLink$,
+  editLink$,
   formattingPlugin,
   formattingState$,
   formatText$,
+  removeLink$,
   toggleBlock$,
   toggleLink$,
 } from "../src/plugins/formatting/index.tsx";
@@ -81,6 +92,25 @@ function selectAll(editor: LexicalEditor) {
     editor.update(
       () => {
         $selectAll();
+      },
+      { discrete: true }
+    );
+  });
+}
+
+function selectFirstInlineText(editor: LexicalEditor) {
+  act(() => {
+    editor.update(
+      () => {
+        const paragraph = $getRoot().getFirstChild();
+        if (!$isElementNode(paragraph)) {
+          return;
+        }
+        const first = paragraph.getFirstChild();
+        const text = $isElementNode(first) ? first.getFirstChild() : first;
+        if ($isTextNode(text)) {
+          text.select(0, 0);
+        }
       },
       { discrete: true }
     );
@@ -181,6 +211,84 @@ test("toggleLink wraps and unwraps the selection", async () => {
 
   await publish(engine, toggleLink$, null);
   expect(changes.at(-1)?.markdown).toBe("docs");
+});
+
+test("auto-link detects typed URLs and serializes to markdown", () => {
+  const changes: MessageComposerValue[] = [];
+  const { editor } = setup({
+    plugins: [formattingPlugin()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "https://example.com ");
+
+  expect(changes.at(-1)?.markdown).toBe("<https://example.com>");
+});
+
+test("auto-link detects bare domains but leaves common file extensions alone", () => {
+  const changes: MessageComposerValue[] = [];
+  const { editor } = setup({
+    plugins: [formattingPlugin()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "google.com notes.md crate.rs ");
+
+  expect(changes.at(-1)?.markdown).toBe("[google.com](https://google.com) notes.md crate.rs");
+});
+
+test("bare-domain auto-linking can be disabled", () => {
+  const changes: MessageComposerValue[] = [];
+  const { editor } = setup({
+    plugins: [formattingPlugin({ autoLink: { bareDomains: false } })],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "google.com https://example.com ");
+
+  expect(changes.at(-1)?.markdown).toBe("google.com <https://example.com>");
+});
+
+test("currentLink exposes editable link state and edit/remove commands update markdown", async () => {
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    plugins: [formattingPlugin()],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "docs");
+  selectAll(editor);
+  await publish(engine, toggleLink$, "https://example.com");
+  selectAll(editor);
+
+  expect(engine.getValue(currentLink$)).toMatchObject({
+    url: "https://example.com",
+    text: "docs",
+    auto: false,
+  });
+
+  await publish(engine, editLink$, { url: "https://openai.com", text: "OpenAI" });
+  expect(changes.at(-1)?.markdown).toBe("[OpenAI](https://openai.com)");
+  expect(engine.getValue(currentLink$)).toMatchObject({
+    url: "https://openai.com",
+    text: "OpenAI",
+  });
+
+  await publish(engine, removeLink$, undefined);
+  expect(changes.at(-1)?.markdown).toBe("OpenAI");
+  expect(engine.getValue(currentLink$)).toBeNull();
+});
+
+test("mention-scheme links do not appear as editable links", () => {
+  const { engine, editor } = setup({
+    plugins: [formattingPlugin()],
+    defaultValue: { ...createEmptyMessageComposerValue(), markdown: "[x](mention:u1)" },
+  });
+
+  selectFirstInlineText(editor);
+
+  expect(engine.getValue(formattingState$).link).toBe(false);
+  expect(engine.getValue(currentLink$)).toBeNull();
 });
 
 test("markdown text-format shortcuts convert typed syntax", async () => {

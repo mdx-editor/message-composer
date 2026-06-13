@@ -43,6 +43,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
             // Tailwind preflight strips list markers and indentation; restore
             // them for the list nodes Lexical renders inside the editor.
             "[&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_ul_ul]:list-[circle]",
+            "[&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/60 [&_a]:underline-offset-2 [&_a:hover]:decoration-primary",
             "data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50",
             editorPropsClassName,
             editorClassName

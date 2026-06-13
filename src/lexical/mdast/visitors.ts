@@ -5,7 +5,7 @@
 // low-priority fallback visitor degrades unsupported constructs to plain text
 // instead of throwing.
 import { $createCodeNode, $isCodeNode, type CodeNode } from "@lexical/code";
-import { $createLinkNode, $isLinkNode, type LinkNode } from "@lexical/link";
+import { $createLinkNode, $isAutoLinkNode, $isLinkNode, type LinkNode } from "@lexical/link";
 import {
   $createListItemNode,
   $createListNode,
@@ -396,7 +396,11 @@ const LexicalCodeVisitor: LexicalExportVisitor<CodeNode, Mdast.Code> = {
 
 const LexicalLinkVisitor: LexicalExportVisitor<LinkNode, Mdast.Link> = {
   testLexicalNode: $isLinkNode,
-  visitLexicalNode: ({ lexicalNode, actions }) => {
+  visitLexicalNode: ({ lexicalNode, mdastParent, actions }) => {
+    if ($isAutoLinkNode(lexicalNode) && lexicalNode.getIsUnlinked()) {
+      actions.visitChildren(lexicalNode, mdastParent);
+      return;
+    }
     actions.addAndStepInto("link", { url: lexicalNode.getURL(), title: lexicalNode.getTitle() });
   },
 };

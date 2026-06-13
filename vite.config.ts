@@ -7,6 +7,9 @@ import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: ["@base-ui-components/react/popover", "@lexical/react/LexicalAutoLinkPlugin"],
+  },
   resolve: {
     alias: [
       // Registry components import the published package name; during

@@ -220,5 +220,7 @@ export function exportMarkdownFromLexical({
   return toMarkdown(exportLexicalTreeToMdast({ root, visitors }), {
     extensions: toMarkdownExtensions,
     ...toMarkdownOptions,
-  }).trimEnd();
+  })
+    .trimEnd()
+    .replace(/(?:&#x20;)+$/, "");
 }
