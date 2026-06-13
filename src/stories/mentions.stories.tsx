@@ -2,7 +2,13 @@ import { useState } from "react";
 
 import { MentionMenu } from "../../registry/components/mentions/mention-menu.tsx";
 import { MentionToken } from "../../registry/components/mentions/mention-token.tsx";
-import { MessageComposer, useCellValues, usePublisher, type MessageComposerValue } from "../index.ts";
+import { MessageComposer as RegistryMessageComposer } from "../../registry/components/message-composer/message-composer.tsx";
+import {
+  MessageComposer as CoreMessageComposer,
+  useCellValues,
+  usePublisher,
+  type MessageComposerValue,
+} from "../index.ts";
 import {
   insertMention$,
   mentionAnchorRect$,
@@ -30,6 +36,8 @@ const editorStyle = {
   maxHeight: 200,
   overflowY: "auto",
   outline: "none",
+  "--message-composer-placeholder-left": "8px",
+  "--message-composer-placeholder-top": "8px",
 } as const;
 const inspectorStyle = { background: "#f4f4f5", padding: 8, whiteSpace: "pre-wrap" } as const;
 
@@ -65,9 +73,9 @@ export const RegistryUI = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <RegistryMessageComposer
         plugins={registryPlugins}
-        editorProps={{ "aria-label": "Message", placeholder: "Type @ to mention someone...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Type @ to mention someone..." }}
         onSubmit={setSubmitted}
       />
       <pre data-testid="submitted" style={inspectorStyle}>
@@ -152,7 +160,7 @@ export const CustomUI = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <CoreMessageComposer
         plugins={customPlugins}
         defaultValue={rehydratedValue}
         editorProps={{ "aria-label": "Message", placeholder: "Type @ to mention someone...", style: editorStyle }}

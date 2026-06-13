@@ -12,6 +12,7 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./plugins/agent-settings": "./dist/plugins/agent-settings.mjs",
+    "./plugins/attachments": "./dist/plugins/attachments.mjs",
     "./plugins/formatting": "./dist/plugins/formatting.mjs",
     "./plugins/mentions": "./dist/plugins/mentions.mjs",
     "./package.json": "./package.json"

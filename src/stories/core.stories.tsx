@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 
+import { MessageComposer as RegistryMessageComposer } from "../../registry/components/message-composer/message-composer.tsx";
 import {
   createEmptyMessageComposerValue,
   markdown$,
-  MessageComposer,
   setMarkdown$,
   submit$,
   useEngineRef,
@@ -13,20 +13,13 @@ import {
   type MessageComposerValue,
 } from "../index.ts";
 
+import "./tailwind.css";
+
 export default {
   title: "Core",
 };
 
 const layoutStyle = { display: "grid", gap: 8, maxWidth: 520 } as const;
-const editorStyle = {
-  border: "1px solid #d4d4d8",
-  borderRadius: 6,
-  padding: 8,
-  minHeight: 80,
-  maxHeight: 200,
-  overflowY: "auto",
-  outline: "none",
-} as const;
 const inspectorStyle = { background: "#f4f4f5", padding: 8, whiteSpace: "pre-wrap" } as const;
 
 export const Uncontrolled = () => {
@@ -36,9 +29,9 @@ export const Uncontrolled = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <RegistryMessageComposer
         ref={handleRef}
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onValueChange={setLastChange}
         onSubmit={setSubmitted}
       />
@@ -66,9 +59,9 @@ export const Controlled = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <RegistryMessageComposer
         value={value}
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onValueChange={setValue}
         onSubmit={setSubmitted}
       />
@@ -99,9 +92,9 @@ export const ExternalControls = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <RegistryMessageComposer
         engineRef={engineRef}
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onSubmit={setSubmitted}
       />
       <div>
@@ -142,8 +135,8 @@ export const AsyncSubmit = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+      <RegistryMessageComposer
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onSubmit={handleSubmit}
       />
       <label>
@@ -197,9 +190,9 @@ export const MarkdownRoundTrip = () => {
           Load into composer
         </button>
       </div>
-      <MessageComposer
+      <RegistryMessageComposer
         engineRef={engineRef}
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
       />
       <pre data-testid="emitted-markdown" style={inspectorStyle}>
         {emitted ?? ""}

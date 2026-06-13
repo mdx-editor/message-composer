@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { FormattingToolbar } from "../../registry/components/formatting/formatting-toolbar.tsx";
+import { MessageComposer as RegistryMessageComposer } from "../../registry/components/message-composer/message-composer.tsx";
 import { MessageComposer, useCellValue, usePublisher, type MessageComposerValue } from "../index.ts";
 import {
   formattingPlugin,
@@ -8,6 +10,8 @@ import {
   toggleBlock$,
   toggleLink$,
 } from "../plugins/formatting/index.tsx";
+
+import "./tailwind.css";
 
 export default {
   title: "Formatting",
@@ -19,15 +23,16 @@ const editorStyle = {
   borderRadius: 6,
   padding: 8,
   minHeight: 80,
-  maxHeight: 200,
-  overflowY: "auto",
   outline: "none",
+  "--message-composer-placeholder-left": "8px",
+  "--message-composer-placeholder-top": "8px",
 } as const;
 const inspectorStyle = { background: "#f4f4f5", padding: 8, whiteSpace: "pre-wrap" } as const;
 
-// Minimal unstyled toolbar, allowed until the first-party registry toolbar
-// exists. It proves the formatting contracts: read formattingState$, publish
-// command streams. preventDefault on mousedown keeps the editor selection.
+// Custom UI over the exact same plugin contracts: no registry component, no
+// Tailwind requirement — read formattingState$, publish the command streams.
+// preventDefault on mousedown keeps the editor selection. Also demonstrates
+// toggleLink$, which the first-party toolbar defers to stage 8 (ADR 0012).
 const UnstyledToolbar = () => {
   const state = useCellValue(formattingState$);
   const format = usePublisher(formatText$);
@@ -74,6 +79,24 @@ const UnstyledToolbar = () => {
 const plugins = [formattingPlugin()];
 
 export const Toolbar = () => {
+  const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
+
+  return (
+    <div style={layoutStyle}>
+      <RegistryMessageComposer
+        plugins={plugins}
+        slots={{ toolbar: FormattingToolbar }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
+        onValueChange={setLastChange}
+      />
+      <pre data-testid="last-change" style={inspectorStyle}>
+        {JSON.stringify(lastChange)}
+      </pre>
+    </div>
+  );
+};
+
+export const CustomUI = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
 
   return (

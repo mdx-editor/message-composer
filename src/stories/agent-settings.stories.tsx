@@ -1,7 +1,13 @@
 import { useState } from "react";
 
 import { ModelEffortPicker as RegistryModelEffortPicker } from "../../registry/components/agent-settings/model-effort-picker.tsx";
-import { MessageComposer, useCellValues, usePublisher, type MessageComposerValue } from "../index.ts";
+import { MessageComposer as RegistryMessageComposer } from "../../registry/components/message-composer/message-composer.tsx";
+import {
+  MessageComposer as CoreMessageComposer,
+  useCellValues,
+  usePublisher,
+  type MessageComposerValue,
+} from "../index.ts";
 import {
   agent$,
   agentSettingsPlugin,
@@ -26,6 +32,8 @@ const editorStyle = {
   maxHeight: 200,
   overflowY: "auto",
   outline: "none",
+  "--message-composer-placeholder-left": "8px",
+  "--message-composer-placeholder-top": "8px",
 } as const;
 const inspectorStyle = { background: "#f4f4f5", padding: 8, whiteSpace: "pre-wrap" } as const;
 
@@ -47,10 +55,10 @@ export const ModelEffortPicker = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <RegistryMessageComposer
         plugins={plugins}
         slots={{ footer: RegistryModelEffortPicker }}
-        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onSubmit={setSubmitted}
       />
       <pre data-testid="submitted" style={inspectorStyle}>
@@ -102,7 +110,7 @@ export const CustomUI = () => {
 
   return (
     <div style={layoutStyle}>
-      <MessageComposer
+      <CoreMessageComposer
         plugins={plugins}
         slots={{ footer: CustomAgentControls }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}

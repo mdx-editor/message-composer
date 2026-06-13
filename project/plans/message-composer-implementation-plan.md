@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–6 and 5A implemented (2026-06-12)
+Status: active — stages 1–7 and 5A implemented (2026-06-12)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The next run starts at stage 7 (attachments).
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar ships without a link control until stage 8 delivers the link editing surface. The next run starts at stage 8 (links), which is smaller than its section suggests (see the note there).
 
 ## Architectural Principles
 
@@ -143,6 +143,8 @@ Validation:
 
 ### 4. Build Formatting Behavior Before Formatting UI
 
+Behavior implemented in the second goal run; the first-party toolbar registry component followed on 2026-06-12 ([ADR 0012](../decisions/0012-formatting-toolbar-registry-component.md)), without a link control until stage 8 ships the link editing surface.
+
 - Implement formatting commands for bold, italic, strikethrough, inline code, code blocks, lists, blockquotes, and links.
 - Expose formatting state cells through `@mdxeditor/message-composer/plugins/formatting` so any toolbar can show active/disabled state without importing other optional plugins.
 - Add markdown shortcuts where Lexical support is appropriate.
@@ -211,6 +213,8 @@ Validation:
 
 ### 7. Add Attachments
 
+Implemented 2026-06-12; the configuration shape, ingestion semantics, and host upload contract are recorded in [ADR 0011](../decisions/0011-attachment-ingestion-and-upload-contract.md).
+
 - Add file picker, drag/drop, and paste normalization.
 - Add attachment validation, upload lifecycle, retry, remove, and error state.
 - Keep upload handling supplied by host applications.
@@ -225,6 +229,8 @@ Validation:
 - Vitest Browser Mode tests for picker, drag/drop, paste, progress states, validation errors, retry, remove, and submitted metadata.
 
 ### 8. Add Link Editing And Auto-Linking
+
+Scope note (2026-06-12): part of this stage already shipped. Stage 4 mounted `LinkPlugin`, exposed `toggleLink$` and boolean link-active state in the formatting plugin, and stage 5A ships link markdown serialization in the core visitor set. Remaining work: auto-link detection for typed/pasted URLs (`AutoLinkNode` + matchers), a richer current-link state cell (URL, text, anchor rect — reuse the mention plugin's anchor-rect pattern), edit/remove commands, and the popover registry UI. The link plugin must ignore `mention:`-scheme links so mention tokens never get a link editor.
 
 - Add typed and pasted URL detection.
 - Add link transform behavior and markdown serialization.
@@ -263,6 +269,22 @@ Validation:
 - Browser-only manual stories for actual recording flows.
 - Vitest Browser Mode tests should cover UI state transitions with mocked media APIs before relying on real device input.
 
+### 10a. Treat Large Pasted Text As An Attachment (lower priority)
+
+Deferred; schedule opportunistically after the higher-numbered stages or when a host needs it. Added 2026-06-12: people throw large texts into prompt boxes, and inlining them wrecks the draft; chat UIs conventionally convert them to a text attachment instead.
+
+- When pasted plain text exceeds a configurable threshold, synthesize a text file and route it through the normal ingestion pipeline (validation, upload contract, lifecycle per ADR 0011) instead of inserting it into the document.
+- Opt-in via the attachments plugin config (e.g. `textPasteThreshold`); off by default so the core paste behavior stays unchanged.
+- Add an expand-to-inline command for text-derived attachments that still hold their local file: removes the attachment and inserts the text into the editor. Registry UI gets the affordance on the attachment tile.
+- Extend the existing `PASTE_COMMAND` interception: files keep precedence, then the text-length branch; decide how pastes inside code blocks behave (likely stay inline).
+- Decide the synthesized file naming/mime convention and whether hosts can intercept the conversion.
+
+Validation:
+
+- Engine tests for threshold gating, synthesized file ingestion, and expand-to-inline restoring the text.
+- Browser tests for pasting large text (converted), small text (inlined), and the expand affordance.
+- Story demonstrating the conversion and expansion flow.
+
 ### 11. Formalize Registry Distribution
 
 - Add root `registry.json`.
@@ -288,6 +310,7 @@ Validation:
 7. Link editing and auto-linking.
 8. Slash commands and context chips.
 9. Audio capture.
+10. Large-text paste-to-attachment (lower priority; possible any time after attachments, stage 7A).
 
 The model/effort picker should come before mentions and attachments because it proves plugin registration, submitted value integration, slots, and registry UI without requiring custom Lexical nodes or file lifecycle complexity.
 
@@ -424,6 +447,17 @@ Engine integration constraints discovered during implementation (encoded in code
 - Registry layout: `registry/components/<plugin>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and plugin subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
 - Tailwind v4 is dev-only (stories and registry development) via `@tailwindcss/vite` in both vite configs and an `@source "../../registry"` directive; the npm package remains Tailwind-free.
 - Browser-test gotcha: pressing the non-native modifier is not a no-op on macOS — Ctrl+letter combos are Cocoa caret-movement bindings that collapse the selection. Pick the modifier from `navigator.platform`.
+- Shift+Enter inside a list item creates the next item — and exits the list from an empty item — by dispatching `INSERT_PARAGRAPH_COMMAND` (which routes through ListPlugin's empty-item handling; `selection.insertParagraph()` does not). Plain Enter is reserved by submit and never reaches Lexical's list semantics; outside lists Shift+Enter remains a line break.
+- Toolbar UI pattern (ADR 0012): registry toolbars compose Base UI `Toolbar.Root`/`Toolbar.Button` with `Toggle` through the `render` prop (one tab stop, arrow-key navigation, automatic `aria-pressed`/`data-pressed`), and prevent `mousedown` default on the root so clicks never steal editor focus or selection. Icon-only controls carry `aria-label`s that double as the browser-test contract.
+- Browser-test gotcha: the first browser-mode run after adding imports from a new dependency subpath can time out wholesale while Vite optimizes the new chunks and reloads the page; rerun before debugging.
+
+## Implementation Notes From Stage 7
+
+- Attachment state changes are draft edits routed through `editorChange$` (ADR 0011), like agent-settings selections: committed when uncontrolled, emitted for the host to echo when controlled. Async upload transitions (progress, settlement) patch by id against the live draft and drop silently when the id is gone — removal and non-echoing controlled hosts need no special-casing.
+- `attachmentsPlugin` contributes no Lexical nodes and no React plugin components. Drop/paste command registration (`DROP_COMMAND`/`PASTE_COMMAND`/`DRAGOVER_COMMAND` at `COMMAND_PRIORITY_HIGH`) and the picker input attach through a `lexicalEditor$` subscription in `init`, so the entire plugin is engine-testable without React or Lexical.
+- The picker is a plugin-managed hidden `<input type="file" data-message-composer-attachment-input>` inserted after the editor root element; `openAttachmentPicker$` clicks it. Browser tests feed it with `userEvent.upload`, and verify the button path by `preventDefault`-ing the input's `click` event, since the native file chooser cannot be automated.
+- Validation rejections live in the `attachmentRejections$` cell (replaced per ingestion, cleared by valid adds or `dismissAttachmentRejections$`); they never enter the value.
+- Browser-test gotchas: React 19 commits asynchronously, so await a retrying locator before touching `locator.element()` or `querySelector`; `page.elementLocator` derives text-based selectors that break when an element's text mutates mid-upload — poll live DOM attributes instead.
 
 ## Decision Protocol
 
@@ -436,7 +470,5 @@ When a goal run hits an item from Open Questions or a new ambiguity:
 
 ## Open Questions
 
-- Whether the core package should include a minimal unstyled toolbar example, or keep all toolbar UI in registry items.
 - When and how the mdast visitor registration axes become public extension API. Stage 6 consumed them internally (the mentions plugin registers its visitors and a value patcher through the registry cells), which validated the shape without exporting it; opening the axes to third-party plugins remains undecided.
-- Whether attachment upload cancellation should be required in the host upload contract.
 - How registry items should be grouped: per plugin, per surface, or bundled presets.

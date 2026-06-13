@@ -166,11 +166,11 @@ function EditorSurface({
                     className="message-composer-placeholder"
                     style={{
                       position: "absolute",
-                      top: 0,
-                      left: 0,
+                      top: "var(--message-composer-placeholder-top, 0)",
+                      left: "var(--message-composer-placeholder-left, 0)",
                       pointerEvents: "none",
                       userSelect: "none",
-                      opacity: 0.5,
+                      opacity: "var(--message-composer-placeholder-opacity, 0.5)",
                     }}
                   >
                     {placeholder}

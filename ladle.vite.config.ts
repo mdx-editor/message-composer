@@ -13,6 +13,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("src/plugins/agent-settings/index.ts", import.meta.url)),
       },
       {
+        find: "@mdxeditor/message-composer/plugins/attachments",
+        replacement: fileURLToPath(new URL("src/plugins/attachments/index.ts", import.meta.url)),
+      },
+      {
         find: "@mdxeditor/message-composer/plugins/formatting",
         replacement: fileURLToPath(new URL("src/plugins/formatting/index.tsx", import.meta.url)),
       },

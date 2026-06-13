@@ -1,11 +1,13 @@
 import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import {
+  $isListItemNode,
   $isListNode,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
   REMOVE_LIST_COMMAND,
 } from "@lexical/list";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
@@ -16,9 +18,13 @@ import {
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
+  COMMAND_PRIORITY_HIGH,
   FORMAT_TEXT_COMMAND,
+  INSERT_PARAGRAPH_COMMAND,
+  KEY_ENTER_COMMAND,
   type LexicalEditor,
 } from "lexical";
+import { useEffect } from "react";
 
 import type { MessageComposerPlugin } from "../../core/plugin.ts";
 import { MARKDOWN_TRANSFORMERS } from "../../lexical/markdown.ts";
@@ -146,12 +152,50 @@ e.sub(toggleBlock$, (blockType, engine) => {
   });
 });
 
+/**
+ * Plain Enter submits the composer, so it can never reach Lexical's
+ * new-list-item handling; Shift+Enter steps in for it inside lists.
+ * insertParagraph on a ListItemNode creates the next item, and on an empty
+ * trailing item exits the list — Lexical's regular Enter semantics.
+ */
+function ListShiftEnterPlugin() {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    return editor.registerCommand<KeyboardEvent | null>(
+      KEY_ENTER_COMMAND,
+      (event) => {
+        if (event === null || !event.shiftKey || event.isComposing || editor.isComposing()) {
+          return false;
+        }
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) {
+          return false;
+        }
+        const anchorNode = selection.anchor.getNode();
+        if (!$isListItemNode(anchorNode) && !anchorNode.getParents().some((parent) => $isListItemNode(parent))) {
+          return false;
+        }
+        event.preventDefault();
+        // Dispatching (rather than selection.insertParagraph()) routes through
+        // ListPlugin's handler, which exits the list from an empty item.
+        editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND, undefined);
+        return true;
+      },
+      COMMAND_PRIORITY_HIGH
+    );
+  }, [editor]);
+
+  return null;
+}
+
 function FormattingPlugins() {
   return (
     <>
       <ListPlugin />
       <LinkPlugin />
       <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
+      <ListShiftEnterPlugin />
     </>
   );
 }
