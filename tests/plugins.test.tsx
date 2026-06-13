@@ -1,3 +1,4 @@
+import { CHECK_LIST, CODE, HEADING, INLINE_CODE } from "@lexical/markdown";
 import { act, cleanup, render } from "@testing-library/react";
 import { Engine, type NodeRef } from "@virtuoso.dev/reactive-engine-core";
 import {
@@ -24,6 +25,7 @@ import {
   type MessageComposerProps,
   type MessageComposerValue,
 } from "../src/index.ts";
+import { MARKDOWN_TRANSFORMERS } from "../src/lexical/markdown.ts";
 import {
   agentSettingsPlugin,
   effortOptions$,
@@ -304,6 +306,13 @@ test("markdown text-format shortcuts convert typed syntax", async () => {
   });
 
   expect(container.querySelector("strong")?.textContent).toBe("bold");
+});
+
+test("markdown typing transformer set matches the composer formatting scope", () => {
+  expect(MARKDOWN_TRANSFORMERS).toContain(INLINE_CODE);
+  expect(MARKDOWN_TRANSFORMERS).toContain(CODE);
+  expect(MARKDOWN_TRANSFORMERS).not.toContain(HEADING);
+  expect(MARKDOWN_TRANSFORMERS).not.toContain(CHECK_LIST);
 });
 
 test("formatting state resets when the selection has no formats", () => {

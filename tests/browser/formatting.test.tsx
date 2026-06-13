@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
-import { CustomUI, Toolbar } from "../../src/stories/formatting.stories.tsx";
+import { CustomUI, MarkdownShortcuts, Toolbar } from "../../src/stories/formatting.stories.tsx";
 
 let root: Root | undefined;
 let container: HTMLElement | undefined;
@@ -19,6 +19,10 @@ function renderStory(node: ReactNode) {
   root = createRoot(container);
   root.render(<StrictMode>{node}</StrictMode>);
   return page.elementLocator(container);
+}
+
+function markdownSnippet(markdown: string) {
+  return `"markdown":${JSON.stringify(markdown)}`;
 }
 
 test("toolbar click applies bold, reflects active state, and serializes to markdown", async () => {
@@ -81,12 +85,67 @@ test("typing markdown shortcuts converts syntax while typing", async () => {
   const textbox = screen.getByRole("textbox");
 
   await userEvent.type(textbox, "**bold**");
-  await expect.element(screen.getByTestId("last-change")).toHaveTextContent('"markdown":"**bold**"');
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("**bold**"));
 
   // The conversion intentionally leaves the caret outside the bold format so
   // continued typing stays plain.
   await userEvent.keyboard(" plain");
-  await expect.element(screen.getByTestId("last-change")).toHaveTextContent('"markdown":"**bold** plain"');
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("**bold** plain"));
+});
+
+test("inline code markdown shortcut serializes and leaves continued typing plain", async () => {
+  const screen = renderStory(<MarkdownShortcuts />);
+  const textbox = screen.getByRole("textbox");
+
+  await userEvent.type(textbox, "`code()`");
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("`code()`"));
+
+  await userEvent.keyboard(" plain");
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("`code()` plain"));
+  expect(document.activeElement).toBe(textbox.element());
+});
+
+test("quote markdown shortcut converts a leading greater-than", async () => {
+  const screen = renderStory(<MarkdownShortcuts />);
+  const textbox = screen.getByRole("textbox");
+
+  await userEvent.type(textbox, "> quoted");
+
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("> quoted"));
+  await expect.element(screen.getByRole("button", { name: "Quote" })).toHaveAttribute("aria-pressed", "true");
+  expect(document.activeElement).toBe(textbox.element());
+});
+
+test("fenced code block markdown shortcut converts without language", async () => {
+  const screen = renderStory(<MarkdownShortcuts />);
+  const textbox = screen.getByRole("textbox");
+
+  await userEvent.type(textbox, "```");
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("```\n```"));
+
+  await userEvent.keyboard("const x = 1;");
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("```\nconst x = 1;\n```"));
+  await expect.element(screen.getByRole("button", { name: "Code block" })).toHaveAttribute("aria-pressed", "true");
+  expect(textbox.element().querySelector("code")).toBeTruthy();
+});
+
+test("fenced code block markdown shortcut preserves newline and submit semantics", async () => {
+  const screen = renderStory(<MarkdownShortcuts />);
+  const textbox = screen.getByRole("textbox");
+
+  await userEvent.type(textbox, "```");
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("```\n```"));
+  expect(textbox.element().querySelector("code[data-language]")).toBeFalsy();
+
+  await userEvent.keyboard("const x = 1;");
+  await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
+  await userEvent.keyboard("return x;");
+  const codeMarkdown = "```\nconst x = 1;\nreturn x;\n```";
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet(codeMarkdown));
+
+  await userEvent.keyboard("{Enter}");
+  await expect.element(screen.getByTestId("last-submit")).toHaveTextContent(markdownSnippet(codeMarkdown));
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet(codeMarkdown));
 });
 
 test("list markdown shortcut converts a leading dash", async () => {
@@ -95,7 +154,7 @@ test("list markdown shortcut converts a leading dash", async () => {
 
   await userEvent.type(textbox, "- item");
 
-  await expect.element(screen.getByTestId("last-change")).toHaveTextContent('"markdown":"* item"');
+  await expect.element(screen.getByTestId("last-change")).toHaveTextContent(markdownSnippet("* item"));
   await expect.element(screen.getByRole("button", { name: "Bullet list" })).toHaveAttribute("aria-pressed", "true");
 });
 

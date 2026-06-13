@@ -30,11 +30,14 @@ import {
   $createTextNode,
   $getNodeByKey,
   $getSelection,
+  $isParagraphNode,
   $isRangeSelection,
   $isTextNode,
   $setSelection,
   COMMAND_PRIORITY_HIGH,
+  COLLABORATION_TAG,
   FORMAT_TEXT_COMMAND,
+  HISTORIC_TAG,
   INSERT_PARAGRAPH_COMMAND,
   KEY_ENTER_COMMAND,
   type LexicalEditor,
@@ -590,6 +593,81 @@ function ListShiftEnterPlugin() {
   return null;
 }
 
+function $isBareCodeFenceShortcut() {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection) || !selection.isCollapsed() || selection.anchor.type !== "text") {
+    return false;
+  }
+  const anchorNode = selection.anchor.getNode();
+  if (!$isTextNode(anchorNode) || selection.anchor.offset !== 3 || anchorNode.getTextContent() !== "```") {
+    return false;
+  }
+  const paragraph = anchorNode.getParent();
+  if (
+    !$isParagraphNode(paragraph) ||
+    anchorNode.getTopLevelElement() !== paragraph ||
+    paragraph.getChildrenSize() !== 1 ||
+    paragraph.getFirstChild() !== anchorNode
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function $replaceBareCodeFenceWithCodeBlock() {
+  if (!$isBareCodeFenceShortcut()) {
+    return false;
+  }
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection)) {
+    return false;
+  }
+  const paragraph = selection.anchor.getNode().getTopLevelElement();
+  if (!$isParagraphNode(paragraph)) {
+    return false;
+  }
+  const codeNode = $createCodeNode();
+  paragraph.replace(codeNode);
+  codeNode.select(0, 0);
+  return true;
+}
+
+function ImmediateCodeBlockShortcutPlugin() {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState, prevEditorState, dirtyLeaves, tags }) => {
+      if (tags.has(COLLABORATION_TAG) || tags.has(HISTORIC_TAG) || editor.isComposing()) {
+        return;
+      }
+      const shouldConvert = editorState.read(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection) || !selection.isCollapsed() || selection.anchor.type !== "text") {
+          return false;
+        }
+        const previousSelection = prevEditorState.read($getSelection);
+        if (
+          !$isRangeSelection(previousSelection) ||
+          !previousSelection.isCollapsed() ||
+          previousSelection.anchor.key !== selection.anchor.key ||
+          previousSelection.anchor.offset !== 2 ||
+          !dirtyLeaves.has(selection.anchor.key)
+        ) {
+          return false;
+        }
+        return $isBareCodeFenceShortcut();
+      });
+      if (shouldConvert) {
+        editor.update(() => {
+          $replaceBareCodeFenceWithCodeBlock();
+        });
+      }
+    });
+  }, [editor]);
+
+  return null;
+}
+
 function createFormattingPlugins(matchers: LinkMatcher[]) {
   function FormattingPlugins() {
     const autoLink = matchers.length > 0 ? <AutoLinkPlugin matchers={matchers} /> : null;
@@ -599,6 +677,7 @@ function createFormattingPlugins(matchers: LinkMatcher[]) {
         <LinkPlugin />
         {autoLink}
         <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
+        <ImmediateCodeBlockShortcutPlugin />
         <ListShiftEnterPlugin />
       </>
     );
@@ -612,6 +691,7 @@ function FormattingPlugins() {
       <ListPlugin />
       <LinkPlugin />
       <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
+      <ImmediateCodeBlockShortcutPlugin />
       <ListShiftEnterPlugin />
     </>
   );

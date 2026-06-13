@@ -80,6 +80,7 @@ const plugins = [formattingPlugin()];
 
 export const Toolbar = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
+  const [lastSubmit, setLastSubmit] = useState<MessageComposerValue | null>(null);
 
   return (
     <div style={layoutStyle}>
@@ -88,9 +89,13 @@ export const Toolbar = () => {
         slots={{ toolbar: FormattingToolbar }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
         onValueChange={setLastChange}
+        onSubmit={setLastSubmit}
       />
       <pre data-testid="last-change" style={inspectorStyle}>
         {JSON.stringify(lastChange)}
+      </pre>
+      <pre data-testid="last-submit" style={inspectorStyle}>
+        {JSON.stringify(lastSubmit)}
       </pre>
     </div>
   );
@@ -98,6 +103,7 @@ export const Toolbar = () => {
 
 export const CustomUI = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
+  const [lastSubmit, setLastSubmit] = useState<MessageComposerValue | null>(null);
 
   return (
     <div style={layoutStyle}>
@@ -106,9 +112,36 @@ export const CustomUI = () => {
         slots={{ toolbar: UnstyledToolbar }}
         editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
         onValueChange={setLastChange}
+        onSubmit={setLastSubmit}
       />
       <pre data-testid="last-change" style={inspectorStyle}>
         {JSON.stringify(lastChange)}
+      </pre>
+      <pre data-testid="last-submit" style={inspectorStyle}>
+        {JSON.stringify(lastSubmit)}
+      </pre>
+    </div>
+  );
+};
+
+export const MarkdownShortcuts = () => {
+  const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
+  const [lastSubmit, setLastSubmit] = useState<MessageComposerValue | null>(null);
+
+  return (
+    <div style={layoutStyle}>
+      <MessageComposer
+        plugins={plugins}
+        slots={{ toolbar: UnstyledToolbar }}
+        editorProps={{ "aria-label": "Message", placeholder: "Write a message...", style: editorStyle }}
+        onValueChange={setLastChange}
+        onSubmit={setLastSubmit}
+      />
+      <pre data-testid="last-change" style={inspectorStyle}>
+        {JSON.stringify(lastChange)}
+      </pre>
+      <pre data-testid="last-submit" style={inspectorStyle}>
+        {JSON.stringify(lastSubmit)}
       </pre>
     </div>
   );

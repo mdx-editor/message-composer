@@ -46,7 +46,12 @@ import { coreExportVisitors, coreImportVisitors } from "./mdast/visitors.ts";
 
 /**
  * Markdown typing shortcuts still run on Lexical's transformer subset; the
- * value conversion itself goes through the mdast visitor pipeline.
+ * value conversion itself goes through the mdast visitor pipeline. Keep this
+ * aligned to formatting-plugin capabilities: no headings, checklists,
+ * thematic breaks, MDX, or tables until those capabilities exist. The
+ * immediate bare-triple-backtick shortcut is implemented by the formatting
+ * plugin because Lexical's markdown shortcut plugin waits for a trigger
+ * character after block syntax.
  */
 export const MARKDOWN_TRANSFORMERS: Transformer[] = [
   CODE,

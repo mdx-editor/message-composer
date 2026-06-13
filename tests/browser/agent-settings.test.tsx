@@ -44,7 +44,7 @@ test("keyboard navigation selects an effort and returns focus to the trigger", a
   await effortTrigger.click();
   await expect.element(page.getByRole("option", { name: "high" })).toBeVisible();
 
-  await userEvent.keyboard("{ArrowDown}");
+  await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
   await userEvent.keyboard("{Enter}");
 
   await expect.element(effortTrigger).toHaveTextContent("high");
