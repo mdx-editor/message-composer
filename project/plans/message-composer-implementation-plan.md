@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–9 and 5A implemented (2026-06-13)
+Status: active — stages 1–9 and 5A implemented; audio capture and emoji picker deferred to v1.1 (2026-06-13)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The ninth run (completed 2026-06-13) covered stage 9: headless slash commands, grouped and nested command results, sidecar `extensions.contextChips` semantics (ADR 0013), a Codex-style full-width registry command shelf, registry chip list, and stories/browser tests for `/model`, `/prompt`, `/file`, and `/tool` flows. The next run can start at stage 10 (audio capture).
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The ninth run (completed 2026-06-13) covered stage 9: headless slash commands, grouped and nested command results, sidecar `extensions.contextChips` semantics (ADR 0013), a Codex-style full-width registry command shelf, registry chip list, and stories/browser tests for `/model`, `/prompt`, `/file`, and `/tool` flows. Audio capture and the emoji picker were deferred to v1.1 on 2026-06-13; the next v1.0 run should start at stage 11 (registry distribution), with stage 10a still available opportunistically if large pasted text becomes urgent.
 
 ## Architectural Principles
 
@@ -287,6 +287,8 @@ Validation:
 
 ### 10. Add Audio Capture
 
+Deferred to v1.1 on 2026-06-13. Audio capture remains in the plan, but should not be treated as the next v1.0 `/goal` target because it adds browser media API, capture lifecycle, playback, and host upload complexity.
+
 - Add audio clip metadata and state transitions.
 - Add recording hooks only after the draft value and attachment lifecycle are stable.
 - Keep capture/upload implementation host-configurable.
@@ -297,6 +299,22 @@ Validation:
 - Tests for state transitions independent of browser media APIs.
 - Browser-only manual stories for actual recording flows.
 - Vitest Browser Mode tests should cover UI state transitions with mocked media APIs before relying on real device input.
+
+### 10b. Add Emoji Picker
+
+Deferred to v1.1 on 2026-06-13. Emoji is a useful chat affordance, but should stay optional and adjacent to audio capture rather than blocking v1.0 registry distribution.
+
+- Add an optional `emoji` plugin with a headless insertion command and recent/frequent emoji state.
+- Keep emoji data, search indexing, skin-tone preferences, and custom emoji catalogs host-configurable so the core package does not own a large static emoji dataset by default.
+- Insert selected emoji at the current editor selection as ordinary text unless a host opts into custom emoji metadata.
+- Build registry UI for an emoji trigger button, searchable picker, category/recent sections, skin-tone selector if configured, and mobile-friendly sheet/popover behavior.
+- Ensure the picker composes with slash commands, mentions, attachments, and toolbar controls without stealing focus or breaking selection restoration.
+
+Validation:
+
+- Engine/Lexical tests for emoji insertion at caret, replacing selected text, recent/frequent state updates, custom catalog items, and submitted markdown/value shape.
+- Browser tests for opening the picker, keyboard search/selection, pointer selection, focus restoration, mobile-sized viewport layout, and interaction with nearby toolbar/attachment controls.
+- Stories for default emoji catalog, custom emoji catalog, recent/frequent state, and mobile sheet layout.
 
 ### 10a. Treat Large Pasted Text As An Attachment (lower priority)
 
@@ -339,8 +357,10 @@ Validation:
 7. Link editing and auto-linking.
 8. Markdown typing shortcut hardening.
 9. Slash commands and context chips.
-10. Audio capture.
+10. Formalize registry distribution.
 11. Large-text paste-to-attachment (lower priority; possible any time after attachments, stage 7A).
+12. Audio capture (deferred to v1.1).
+13. Emoji picker (deferred to v1.1, around audio/mobile affordance work).
 
 The model/effort picker should come before mentions and attachments because it proves plugin registration, submitted value integration, slots, and registry UI without requiring custom Lexical nodes or file lifecycle complexity.
 
@@ -370,6 +390,7 @@ src/
     links/
     slash-commands/
     audio/
+    emoji/
   index.ts
 registry/
   registry.json

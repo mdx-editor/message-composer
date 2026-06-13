@@ -41,3 +41,7 @@
     outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
   }
 }
+
+.mobile-action-sheet {
+  inline-size: calc(100% - 1rem);
+}
