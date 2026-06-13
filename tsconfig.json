@@ -12,7 +12,8 @@
       "@mdxeditor/message-composer/plugins/agent-settings": ["./src/plugins/agent-settings/index.ts"],
       "@mdxeditor/message-composer/plugins/attachments": ["./src/plugins/attachments/index.ts"],
       "@mdxeditor/message-composer/plugins/formatting": ["./src/plugins/formatting/index.tsx"],
-      "@mdxeditor/message-composer/plugins/mentions": ["./src/plugins/mentions/index.ts"]
+      "@mdxeditor/message-composer/plugins/mentions": ["./src/plugins/mentions/index.ts"],
+      "@mdxeditor/message-composer/plugins/slash-commands": ["./src/plugins/slash-commands/index.tsx"]
     },
     "strict": true,
     "noUnusedLocals": true,

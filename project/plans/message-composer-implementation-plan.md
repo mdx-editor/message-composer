@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–8A and 5A implemented (2026-06-13)
+Status: active — stages 1–9 and 5A implemented (2026-06-13)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The next run can start at stage 9 (slash commands and context chips).
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The ninth run (completed 2026-06-13) covered stage 9: headless slash commands, grouped and nested command results, sidecar `extensions.contextChips` semantics (ADR 0013), a Codex-style full-width registry command shelf, registry chip list, and stories/browser tests for `/model`, `/prompt`, `/file`, and `/tool` flows. The next run can start at stage 10 (audio capture).
 
 ## Architectural Principles
 
@@ -263,16 +263,27 @@ Validation:
 
 ### 9. Add Slash Commands And Context Chips
 
+Implemented 2026-06-13. Stage 9 added the optional `slash-commands` plugin subpath with a headless slash trigger/query lifecycle, grouped provider results, nested secondary pickers, keyboard navigation, execution/cancellation commands, and sidecar context chips stored under `value.extensions.contextChips` (ADR 0013). The first-party registry UI ships a Codex-style full-width command shelf above the composer plus a removable chip list; hosts can replace both with custom UI over the exported cells/streams.
+
 - Add command trigger/query lifecycle similar to mentions, but with action execution.
+- Support command groups in the provider/result model and first-party registry UI so commands can be organized by purpose (for example: model, tools, prompts, context, files).
+- Support nested command selection flows where choosing or narrowing to a command can replace the full-width menu contents with a secondary picker instead of immediately executing.
 - Add structured context chip support for selected prompts, entities, file references, or tools.
 - Keep command providers and chip rendering application-owned.
-- Build registry UI for command menu and chip list.
+- Build registry UI for a Codex-style full-width command shelf above the composer, plus the chip list.
+
+Example flows:
+
+- `/model` opens the full-width command shelf directly into model choices; selecting one updates the existing agent settings state and closes the shelf.
+- `/prompt bug` filters to prompt-template commands; selecting one can insert starter markdown and add a prompt context chip.
+- `/file composer` enters a file-reference picker; selecting a file adds a context chip with the host-owned file id/path/range metadata.
+- `/tool web` toggles or adds a tool chip, leaving markdown unchanged while submitting structured tool context.
 
 Validation:
 
-- Tests for command filtering, keyboard navigation, execution, and cancellation.
-- Stories for command provider customization and chip rendering.
-- Vitest Browser Mode tests for opening the command menu, selecting commands, dismissing the menu, and updating context chips.
+- Tests for command grouping, filtering, keyboard navigation, nested selection, execution, and cancellation.
+- Stories for command provider customization, command groups, nested pickers, and chip rendering.
+- Vitest Browser Mode tests for opening the full-width command shelf, navigating grouped commands, drilling into a secondary picker such as `/model`, selecting commands, dismissing the shelf, and updating context chips.
 
 ### 10. Add Audio Capture
 

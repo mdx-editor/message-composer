@@ -24,7 +24,7 @@ function MessageComposerImpl<TValue extends MessageComposerValue = MessageCompos
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-input bg-background text-foreground shadow-xs",
+        "relative overflow-visible rounded-md border border-input bg-background text-foreground shadow-xs",
         "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
         "[--message-composer-placeholder-left:0.75rem]",
         "[--message-composer-placeholder-opacity:1]",

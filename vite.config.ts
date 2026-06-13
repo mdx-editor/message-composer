@@ -31,6 +31,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("src/plugins/mentions/index.ts", import.meta.url)),
       },
       {
+        find: "@mdxeditor/message-composer/plugins/slash-commands",
+        replacement: fileURLToPath(new URL("src/plugins/slash-commands/index.tsx", import.meta.url)),
+      },
+      {
         find: "@mdxeditor/message-composer",
         replacement: fileURLToPath(new URL("src/index.ts", import.meta.url)),
       },
@@ -148,6 +152,7 @@ export default defineConfig({
       "plugins/attachments": "src/plugins/attachments/index.ts",
       "plugins/formatting": "src/plugins/formatting/index.tsx",
       "plugins/mentions": "src/plugins/mentions/index.ts",
+      "plugins/slash-commands": "src/plugins/slash-commands/index.tsx",
     },
     dts: {
       tsgo: true,

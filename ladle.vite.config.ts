@@ -25,6 +25,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("src/plugins/mentions/index.ts", import.meta.url)),
       },
       {
+        find: "@mdxeditor/message-composer/plugins/slash-commands",
+        replacement: fileURLToPath(new URL("src/plugins/slash-commands/index.tsx", import.meta.url)),
+      },
+      {
         find: "@mdxeditor/message-composer",
         replacement: fileURLToPath(new URL("src/index.ts", import.meta.url)),
       },

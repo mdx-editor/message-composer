@@ -15,6 +15,7 @@
     "./plugins/attachments": "./dist/plugins/attachments.mjs",
     "./plugins/formatting": "./dist/plugins/formatting.mjs",
     "./plugins/mentions": "./dist/plugins/mentions.mjs",
+    "./plugins/slash-commands": "./dist/plugins/slash-commands.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
