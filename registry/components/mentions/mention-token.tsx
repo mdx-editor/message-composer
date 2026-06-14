@@ -1,6 +1,6 @@
 import type { MessageComposerMentionTokenProps } from "@mdxeditor/message-composer/plugins/mentions";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 export function MentionToken({ trigger, label, className }: MessageComposerMentionTokenProps & { className?: string }) {
   return (

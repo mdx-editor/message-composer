@@ -9,7 +9,7 @@ import {
   mentionResults$,
 } from "@mdxeditor/message-composer/plugins/mentions";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 export function MentionMenu({ className }: { className?: string }) {
   const [menu, rect, results, loading, error, highlight] = useCellValues(

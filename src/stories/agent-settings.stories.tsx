@@ -20,7 +20,7 @@ import {
 import "./tailwind.css";
 
 export default {
-  title: "AgentSettings",
+  title: "Agent Settings",
 };
 
 const layoutStyle = { display: "grid", gap: 8, maxWidth: 520 } as const;
@@ -80,6 +80,7 @@ const CustomAgentControls = () => {
       <fieldset aria-label="Model">
         {models.map((model) => (
           <button
+            className="story-button"
             key={model.id}
             type="button"
             aria-pressed={agent?.modelId === model.id}
@@ -92,6 +93,7 @@ const CustomAgentControls = () => {
       <fieldset aria-label="Effort">
         {efforts.map((effort) => (
           <button
+            className="story-button"
             key={effort}
             type="button"
             aria-pressed={agent?.effort === effort}

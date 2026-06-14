@@ -15,7 +15,7 @@ import {
   type MessageComposerSlashCommandItem,
 } from "@mdxeditor/message-composer/plugins/slash-commands";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 function groupedItems(
   items: readonly MessageComposerSlashCommandItem[],

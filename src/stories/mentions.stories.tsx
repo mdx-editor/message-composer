@@ -120,6 +120,7 @@ const CustomMentionMenu = () => {
       {results.map((option, index) => (
         <li key={option.id}>
           <button
+            className="story-button"
             type="button"
             aria-pressed={index === highlight}
             onMouseDown={(event) => event.preventDefault()}

@@ -567,11 +567,13 @@ function MobileComposer({
   footer,
   withToolbar = false,
   autoInsert,
+  showInspector = true,
 }: {
   defaultValue?: MessageComposerValue;
   footer?: ComponentType;
   withToolbar?: boolean;
   autoInsert?: string;
+  showInspector?: boolean;
 }) {
   const [submitted, setSubmitted] = useState<MessageComposerValue | null>(null);
   const Footer = footer ?? MobileFooterClosed;
@@ -601,9 +603,11 @@ function MobileComposer({
         editorProps={{ "aria-label": "Message", placeholder: "Message..." }}
         onSubmit={setSubmitted}
       />
-      <pre data-testid="mobile-submitted" style={inspectorStyle}>
-        {JSON.stringify(submitted)}
-      </pre>
+      {showInspector ? (
+        <pre data-testid="mobile-submitted" style={inspectorStyle}>
+          {JSON.stringify(submitted)}
+        </pre>
+      ) : null}
     </div>
   );
 }
@@ -674,5 +678,12 @@ export const CrowdedContext = () => (
   <PhoneFrame>
     <MessageThread compact />
     <MobileComposer defaultValue={crowdedValue} footer={MobileModelFooter} withToolbar />
+  </PhoneFrame>
+);
+
+export const PublicDemo = () => (
+  <PhoneFrame>
+    <MessageThread compact />
+    <MobileComposer defaultValue={crowdedValue} footer={MobileModelFooter} showInspector={false} withToolbar />
   </PhoneFrame>
 );

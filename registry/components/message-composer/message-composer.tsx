@@ -6,7 +6,7 @@ import {
 } from "@mdxeditor/message-composer";
 import { forwardRef, type ReactElement, type Ref, type RefAttributes } from "react";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 export interface MessageComposerProps<
   TValue extends MessageComposerValue = MessageComposerValue,

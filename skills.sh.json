@@ -1,0 +1,16 @@
+{
+  "name": "message-composer",
+  "description": "Agent skills for integrating and maintaining @mdxeditor/message-composer.",
+  "skills": [
+    {
+      "id": "message-composer-integrator",
+      "path": "skills/message-composer-integrator",
+      "description": "Integrate @mdxeditor/message-composer into React chat and AI-agent apps."
+    },
+    {
+      "id": "message-composer-maintainer",
+      "path": "skills/message-composer-maintainer",
+      "description": "Maintain the message composer repository, plugins, docs, registry UI, and release workflow."
+    }
+  ]
+}

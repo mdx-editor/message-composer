@@ -1,0 +1,4 @@
+interface:
+  display_name: "Message Composer Maintainer"
+  short_description: "Maintain the composer repository"
+  default_prompt: "Use $message-composer-maintainer to implement this message composer repository change."

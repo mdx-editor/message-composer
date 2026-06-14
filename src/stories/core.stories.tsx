@@ -36,10 +36,10 @@ export const Uncontrolled = () => {
         onSubmit={setSubmitted}
       />
       <div>
-        <button type="button" onClick={() => handleRef.current?.reset()}>
+        <button className="story-button" type="button" onClick={() => handleRef.current?.reset()}>
           Reset
         </button>
-        <button type="button" onClick={() => handleRef.current?.submit()}>
+        <button className="story-button" type="button" onClick={() => handleRef.current?.submit()}>
           Submit
         </button>
       </div>
@@ -66,10 +66,14 @@ export const Controlled = () => {
         onSubmit={setSubmitted}
       />
       <div>
-        <button type="button" onClick={() => setValue({ ...value, markdown: "Hello from the host" })}>
+        <button
+          className="story-button"
+          type="button"
+          onClick={() => setValue({ ...value, markdown: "Hello from the host" })}
+        >
           Set draft
         </button>
-        <button type="button" onClick={() => setValue(createEmptyMessageComposerValue())}>
+        <button className="story-button" type="button" onClick={() => setValue(createEmptyMessageComposerValue())}>
           Clear
         </button>
       </div>
@@ -98,10 +102,14 @@ export const ExternalControls = () => {
         onSubmit={setSubmitted}
       />
       <div>
-        <button type="button" onClick={() => publishMarkdown?.("Inserted from external control")}>
+        <button
+          className="story-button"
+          type="button"
+          onClick={() => publishMarkdown?.("Inserted from external control")}
+        >
           Insert template
         </button>
-        <button type="button" onClick={() => publishSubmit?.()}>
+        <button className="story-button" type="button" onClick={() => publishSubmit?.()}>
           Submit externally
         </button>
       </div>
@@ -186,7 +194,7 @@ export const MarkdownRoundTrip = () => {
         onChange={(event) => setSource(event.target.value)}
       />
       <div>
-        <button type="button" onClick={() => publishMarkdown?.(source)}>
+        <button className="story-button" type="button" onClick={() => publishMarkdown?.(source)}>
           Load into composer
         </button>
       </div>

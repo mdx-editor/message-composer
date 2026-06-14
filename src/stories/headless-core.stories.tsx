@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 
 import { MessageComposer, type MessageComposerHandle, type MessageComposerValue } from "../index.ts";
 
+import "./tailwind.css";
+
 export default {
   title: "Core/Headless",
 };
@@ -32,10 +34,10 @@ export const HeadlessCore = () => {
         onSubmit={setSubmitted}
       />
       <div>
-        <button type="button" onClick={() => handleRef.current?.reset()}>
+        <button className="story-button" type="button" onClick={() => handleRef.current?.reset()}>
           Reset
         </button>
-        <button type="button" onClick={() => handleRef.current?.submit()}>
+        <button className="story-button" type="button" onClick={() => handleRef.current?.submit()}>
           Submit
         </button>
       </div>

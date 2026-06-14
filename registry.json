@@ -1,0 +1,143 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "message-composer",
+  "homepage": "https://mdx-editor.github.io/message-composer/",
+  "items": [
+    {
+      "name": "message-composer-utils",
+      "type": "registry:lib",
+      "title": "Message Composer Utilities",
+      "description": "Shared class name utility used by the message composer registry components.",
+      "dependencies": ["clsx", "tailwind-merge"],
+      "files": [
+        {
+          "path": "registry/lib/utils.ts",
+          "type": "registry:lib",
+          "target": "@lib/utils.ts"
+        }
+      ],
+      "categories": ["message-composer", "utilities"]
+    },
+    {
+      "name": "message-composer",
+      "type": "registry:component",
+      "title": "Message Composer",
+      "description": "A shadcn-styled wrapper around the headless message composer React component.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/message-composer/message-composer.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/message-composer.tsx"
+        }
+      ],
+      "categories": ["message-composer", "core"]
+    },
+    {
+      "name": "formatting-toolbar",
+      "type": "registry:component",
+      "title": "Formatting Toolbar",
+      "description": "Formatting toolbar with text formats, block formats, and link editing controls.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@base-ui-components/react@1.0.0-rc.0", "@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/formatting/formatting-toolbar.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/formatting-toolbar.tsx"
+        }
+      ],
+      "categories": ["message-composer", "formatting"]
+    },
+    {
+      "name": "model-effort-picker",
+      "type": "registry:component",
+      "title": "Model Effort Picker",
+      "description": "Model and effort selector UI for the agent settings plugin.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@base-ui-components/react@1.0.0-rc.0", "@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/agent-settings/model-effort-picker.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/model-effort-picker.tsx"
+        }
+      ],
+      "categories": ["message-composer", "agent-settings"]
+    },
+    {
+      "name": "attachments-ui",
+      "type": "registry:block",
+      "title": "Attachments UI",
+      "description": "Attachment picker button plus attachment preview, progress, retry, and rejection UI.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/attachments/attachment-picker-button.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/attachment-picker-button.tsx"
+        },
+        {
+          "path": "registry/components/attachments/attachment-list.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/attachment-list.tsx"
+        }
+      ],
+      "categories": ["message-composer", "attachments"]
+    },
+    {
+      "name": "mentions-ui",
+      "type": "registry:block",
+      "title": "Mentions UI",
+      "description": "Mention autocomplete menu and mention token renderer for the mentions plugin.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/mentions/mention-menu.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/mention-menu.tsx"
+        },
+        {
+          "path": "registry/components/mentions/mention-token.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/mention-token.tsx"
+        }
+      ],
+      "categories": ["message-composer", "mentions"]
+    },
+    {
+      "name": "slash-command-shelf",
+      "type": "registry:component",
+      "title": "Slash Command Shelf",
+      "description": "Full-width slash command shelf and context chip list for the slash commands plugin.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/slash-commands/command-shelf.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/command-shelf.tsx"
+        }
+      ],
+      "categories": ["message-composer", "slash-commands"]
+    },
+    {
+      "name": "message-composer-kit",
+      "type": "registry:block",
+      "title": "Message Composer Kit",
+      "description": "Convenience installer for the composer shell and all current first-party registry UI components.",
+      "registryDependencies": [
+        "mdx-editor/message-composer/message-composer",
+        "mdx-editor/message-composer/formatting-toolbar",
+        "mdx-editor/message-composer/model-effort-picker",
+        "mdx-editor/message-composer/attachments-ui",
+        "mdx-editor/message-composer/mentions-ui",
+        "mdx-editor/message-composer/slash-command-shelf"
+      ],
+      "categories": ["message-composer", "preset"]
+    }
+  ]
+}

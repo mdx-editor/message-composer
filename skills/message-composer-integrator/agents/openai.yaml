@@ -1,0 +1,4 @@
+interface:
+  display_name: "Message Composer Integrator"
+  short_description: "Integrate message composer in apps"
+  default_prompt: "Use $message-composer-integrator to add @mdxeditor/message-composer to this React chat app."

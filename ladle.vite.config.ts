@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@/lib/utils",
+        replacement: fileURLToPath(new URL("registry/lib/utils.ts", import.meta.url)),
+      },
+      {
         find: "@mdxeditor/message-composer/plugins/agent-settings",
         replacement: fileURLToPath(new URL("src/plugins/agent-settings/index.ts", import.meta.url)),
       },

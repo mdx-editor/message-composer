@@ -142,7 +142,7 @@ const CustomAttachmentControls = () => {
   return (
     <div data-testid="custom-attachment-controls" style={{ display: "grid", gap: 4 }}>
       <div style={{ display: "flex", gap: 8 }}>
-        <button type="button" onClick={() => openPicker()}>
+        <button className="story-button" type="button" onClick={() => openPicker()}>
           Attach files
         </button>
         <input
@@ -165,11 +165,11 @@ const CustomAttachmentControls = () => {
             {attachment.progress === undefined ? "" : ` ${Math.round(attachment.progress * 100)}%`}
             {attachment.status === "error" ? ` (${attachment.error ?? "failed"})` : ""}
             {attachment.status === "error" && attachment.file ? (
-              <button type="button" onClick={() => retry(attachment.id)}>
+              <button className="story-button" type="button" onClick={() => retry(attachment.id)}>
                 Retry {attachment.name}
               </button>
             ) : null}
-            <button type="button" onClick={() => remove(attachment.id)}>
+            <button className="story-button" type="button" onClick={() => remove(attachment.id)}>
               Remove {attachment.name}
             </button>
           </li>

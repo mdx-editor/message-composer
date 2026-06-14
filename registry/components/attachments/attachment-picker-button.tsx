@@ -2,7 +2,7 @@ import { disabled$, useCellValue, usePublisher } from "@mdxeditor/message-compos
 import { openAttachmentPicker$ } from "@mdxeditor/message-composer/plugins/attachments";
 import type { ReactNode } from "react";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 function PaperclipIcon() {
   return (

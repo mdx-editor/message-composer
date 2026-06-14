@@ -8,6 +8,7 @@
     "resolveJsonModule": true,
     "types": ["node", "react", "react-dom"],
     "paths": {
+      "@/lib/utils": ["./registry/lib/utils.ts"],
       "@mdxeditor/message-composer": ["./src/index.ts"],
       "@mdxeditor/message-composer/plugins/agent-settings": ["./src/plugins/agent-settings/index.ts"],
       "@mdxeditor/message-composer/plugins/attachments": ["./src/plugins/attachments/index.ts"],

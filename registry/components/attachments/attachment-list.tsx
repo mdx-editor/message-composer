@@ -9,7 +9,7 @@ import {
 } from "@mdxeditor/message-composer/plugins/attachments";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 function CloseIcon() {
   return (

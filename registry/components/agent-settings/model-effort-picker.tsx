@@ -8,7 +8,7 @@ import {
   selectModel$,
 } from "@mdxeditor/message-composer/plugins/agent-settings";
 
-import { cn } from "../../lib/utils.ts";
+import { cn } from "@/lib/utils";
 
 interface PickerItem {
   label: string;

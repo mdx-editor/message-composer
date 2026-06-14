@@ -12,6 +12,10 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      {
+        find: "@/lib/utils",
+        replacement: fileURLToPath(new URL("registry/lib/utils.ts", import.meta.url)),
+      },
       // Registry components import the published package name; during
       // development and tests it resolves to the local source.
       {

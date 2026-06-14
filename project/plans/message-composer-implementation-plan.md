@@ -1,6 +1,6 @@
 # Message Composer Implementation Plan
 
-Status: active — stages 1–9 and 5A implemented; audio capture and emoji picker deferred to v1.1 (2026-06-13)
+Status: active — stages 1–9, 5A, and 11 implemented; audio capture and emoji picker deferred to v1.1 (2026-06-14)
 
 ## Goal
 
@@ -12,7 +12,7 @@ This document is suitable as the working context for a long-running `/goal`. It 
 
 ## Goal Run Scope
 
-The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The ninth run (completed 2026-06-13) covered stage 9: headless slash commands, grouped and nested command results, sidecar `extensions.contextChips` semantics (ADR 0013), a Codex-style full-width registry command shelf, registry chip list, and stories/browser tests for `/model`, `/prompt`, `/file`, and `/tool` flows. Audio capture and the emoji picker were deferred to v1.1 on 2026-06-13; the next v1.0 run should start at stage 11 (registry distribution), with stage 10a still available opportunistically if large pasted text becomes urgent.
+The first `/goal` run (completed 2026-06-12) covered development sequence stages 1–3: core value model, reactive-engine core, and the Lexical editor surface. The second run (completed 2026-06-12) covered stages 4–5: plugin/slot plumbing, formatting behavior, and the agent-settings plugin with the first shadcn/Base UI registry component. The third run (completed 2026-06-12) covered stage 5A: the mdast visitor pipeline ported from the editor repository, replacing the transformer-based conversion. The fourth run (completed 2026-06-12) covered stage 6: the mentions plugin with link-form serialization through the visitor registries (ADR 0008), the first plugin-contributed Lexical node, and the derived-sidecar patcher mechanics (ADR 0009). On 2026-06-12 the behavior-module concept was renamed from "features" to "plugins" across the API, subpaths, and this plan (ADR 0010); ADRs 0001–0009 predate the rename and use the old term. The fifth run (completed 2026-06-12) covered stage 7 only: the attachments plugin — ingestion through picker/drop/paste, the host upload contract with provided-not-required cancellation (ADR 0011), lifecycle state routed through `editorChange$` — plus the attachments registry UI. Bundling stage 8 was considered and rejected so the upload-contract decision got a dedicated run. The sixth run (completed 2026-06-12) closed the stage 4 leftover: the first-party formatting toolbar registry component (Base UI Toolbar + Toggle composition, ADR 0012), replacing the unstyled story toolbar in the first-party story while keeping it as the custom-UI story, with browser tests for focus preservation, arrow-key navigation, and the custom-UI contracts. ADR 0012 also resolves the toolbar open question: toolbar UI is registry-only, and the first-party toolbar shipped without a link control until stage 8 delivered the link editing surface. The seventh run (completed 2026-06-13) covered stage 8: typed/pasted URL auto-linking, richer current-link state, edit/remove commands, mention-link exclusion, a Base UI popover link editor in the first-party formatting toolbar, and links stories/browser tests. The eighth run (completed 2026-06-13) covered stage 8A: markdown shortcut hardening with a transformer-scope audit, browser coverage for inline code, quote/list regressions, immediate bare triple-backtick code-block conversion, Shift+Enter inside code blocks, and plain-Enter submit after code-block conversion. The ninth run (completed 2026-06-13) covered stage 9: headless slash commands, grouped and nested command results, sidecar `extensions.contextChips` semantics (ADR 0013), a Codex-style full-width registry command shelf, registry chip list, and stories/browser tests for `/model`, `/prompt`, `/file`, and `/tool` flows. Audio capture and the emoji picker were deferred to v1.1 on 2026-06-13. The tenth run (completed 2026-06-14) covered stage 11: root shadcn registry metadata, plugin-level registry items, a full-kit preset, Pages-hosted registry JSON distribution for the private-repo phase (ADR 0014), README install paths, CI registry generation, and local registry smoke validation. ADR 0015 supersedes the public install guidance: after the repository is public, docs and registry dependencies use GitHub-address items such as `mdx-editor/message-composer/message-composer-kit`, with Pages JSON retained as a fallback artifact.
 
 ## Architectural Principles
 
@@ -49,8 +49,9 @@ The first `/goal` run (completed 2026-06-12) covered development sequence stages
 
 5. **First-party registry UI layer**
    - shadcn/Base UI components for toolbar, pickers, menus, dialogs, mention list, attachment preview, link editor, and model/effort picker.
-   - Distributed through the shadcn GitHub registry.
-   - Installable plugin-by-plugin where practical.
+
+- Distributed as shadcn registry items from root `registry.json`; public installs use GitHub-address commands, and the GitHub Pages demo output also publishes direct JSON fallback artifacts.
+- Installable plugin-by-plugin where practical.
 
 ## Public API Direction
 
@@ -334,6 +335,8 @@ Validation:
 
 ### 11. Formalize Registry Distribution
 
+Implemented 2026-06-14. The root `registry.json` is the source registry catalog. `vp run build:registry` runs `shadcn build registry.json --output build/r`; the Pages workflow runs that after the Ladle build so `https://mdx-editor.github.io/message-composer/r/<item>.json` hosts installable registry items. ADR 0014 used Pages-hosted JSON URLs during the private-repo phase; ADR 0015 supersedes public install guidance so install commands and internal registry dependencies use GitHub item addresses such as `mdx-editor/message-composer/<item>` once the repository is public.
+
 - Add root `registry.json`.
 - Split installable registry items by plugin where practical.
 - Add shared registry utilities/styles only when duplication justifies them.
@@ -343,8 +346,9 @@ Validation:
 Validation:
 
 - Local registry build/validation command.
-- Fresh-app smoke test installing at least the composer shell, formatting toolbar, model picker, mentions UI, and attachments UI.
-- Vitest Browser Mode smoke test against installed registry components in a clean fixture app.
+- Fresh-app dry-run smoke test installing the full kit through a locally mirrored registry item graph covering the composer shell, formatting toolbar, model picker, mentions UI, attachments UI, and slash command shelf.
+- Deferred until the repository is public: shadcn GitHub-address smoke test for `mdx-editor/message-composer/message-composer-kit` and at least one individual registry item.
+- Deferred: Vitest Browser Mode smoke test against actually installed registry components in a clean fixture app. This should run after either the npm package is published or a fixture can resolve the package to a local packed tarball without relying on unpublished registry dependencies.
 
 ## Suggested Implementation Order
 
@@ -496,7 +500,7 @@ Engine integration constraints discovered during implementation (encoded in code
 - Lexical's markdown shortcut listener only fires when the anchor advances like real typing (one character per update), and a converted text-format shortcut intentionally leaves the caret outside the format. Tests must type character-by-character and not expect active formatting state after conversion.
 - MDXEditor's markdown-shortcut reference supports inline code via `` ` `` and code blocks via <code>```$lang </code>, but only when the corresponding editor capabilities are active. The composer should preserve that separation: shortcuts are typing-time UX, while mdast visitors remain authoritative for import/export.
 - Optional plugin behavior APIs are package subpaths, not root exports: `@mdxeditor/message-composer/plugins/formatting` and `@mdxeditor/message-composer/plugins/agent-settings`. The root package exports the composer, core value/nodes, slots, remote hooks, and the Lexical editor escape hatch.
-- Registry layout: `registry/components/<plugin>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and plugin subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Imports inside registry files currently carry `.ts(x)` extensions (nodenext); verify the shadcn CLI rewrites them at stage 11.
+- Registry layout: `registry/components/<plugin>/<item>.tsx` plus `registry/lib/utils.ts` (`cn`). Registry files import the published package name and plugin subpaths, resolved locally through vite aliases and tsconfig `paths` entries; without the `paths` entries TypeScript resolves self-references to stale `dist` types. Registry components import `cn` as `@/lib/utils`, matching normal shadcn output and avoiding `.ts` import-extension requirements in consumer apps.
 - Tailwind v4 is dev-only (stories and registry development) via `@tailwindcss/vite` in both vite configs and an `@source "../../registry"` directive; the npm package remains Tailwind-free.
 - Browser-test gotcha: pressing the non-native modifier is not a no-op on macOS — Ctrl+letter combos are Cocoa caret-movement bindings that collapse the selection. Pick the modifier from `navigator.platform`.
 - Shift+Enter inside a list item creates the next item — and exits the list from an empty item — by dispatching `INSERT_PARAGRAPH_COMMAND` (which routes through ListPlugin's empty-item handling; `selection.insertParagraph()` does not). Plain Enter is reserved by submit and never reaches Lexical's list semantics; outside lists Shift+Enter remains a line break.
@@ -523,4 +527,3 @@ When a goal run hits an item from Open Questions or a new ambiguity:
 ## Open Questions
 
 - When and how the mdast visitor registration axes become public extension API. Stage 6 consumed them internally (the mentions plugin registers its visitors and a value patcher through the registry cells), which validated the shape without exporting it; opening the axes to third-party plugins remains undecided.
-- How registry items should be grouped: per plugin, per surface, or bundled presets.

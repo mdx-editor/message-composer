@@ -41,31 +41,57 @@ const UnstyledToolbar = () => {
 
   return (
     <div role="toolbar" aria-label="Formatting" tabIndex={-1} onMouseDown={(event) => event.preventDefault()}>
-      <button type="button" aria-pressed={state.bold} onClick={() => format("bold")}>
+      <button className="story-button" type="button" aria-pressed={state.bold} onClick={() => format("bold")}>
         Bold
       </button>
-      <button type="button" aria-pressed={state.italic} onClick={() => format("italic")}>
+      <button className="story-button" type="button" aria-pressed={state.italic} onClick={() => format("italic")}>
         Italic
       </button>
-      <button type="button" aria-pressed={state.strikethrough} onClick={() => format("strikethrough")}>
+      <button
+        className="story-button"
+        type="button"
+        aria-pressed={state.strikethrough}
+        onClick={() => format("strikethrough")}
+      >
         Strikethrough
       </button>
-      <button type="button" aria-pressed={state.code} onClick={() => format("code")}>
+      <button className="story-button" type="button" aria-pressed={state.code} onClick={() => format("code")}>
         Inline code
       </button>
-      <button type="button" aria-pressed={state.blockType === "quote"} onClick={() => block("quote")}>
+      <button
+        className="story-button"
+        type="button"
+        aria-pressed={state.blockType === "quote"}
+        onClick={() => block("quote")}
+      >
         Quote
       </button>
-      <button type="button" aria-pressed={state.blockType === "code"} onClick={() => block("code")}>
+      <button
+        className="story-button"
+        type="button"
+        aria-pressed={state.blockType === "code"}
+        onClick={() => block("code")}
+      >
         Code block
       </button>
-      <button type="button" aria-pressed={state.blockType === "ul"} onClick={() => block("ul")}>
+      <button
+        className="story-button"
+        type="button"
+        aria-pressed={state.blockType === "ul"}
+        onClick={() => block("ul")}
+      >
         Bullet list
       </button>
-      <button type="button" aria-pressed={state.blockType === "ol"} onClick={() => block("ol")}>
+      <button
+        className="story-button"
+        type="button"
+        aria-pressed={state.blockType === "ol"}
+        onClick={() => block("ol")}
+      >
         Numbered list
       </button>
       <button
+        className="story-button"
         type="button"
         aria-pressed={state.link}
         onClick={() => (state.link ? link(null) : link("https://example.com"))}

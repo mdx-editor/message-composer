@@ -2,7 +2,15 @@
   "name": "@mdxeditor/message-composer",
   "version": "0.0.0",
   "description": "A React message composer component for chat and AI agent interfaces.",
+  "homepage": "https://mdx-editor.github.io/message-composer/",
+  "bugs": {
+    "url": "https://github.com/mdx-editor/message-composer/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdx-editor/message-composer.git"
+  },
   "files": [
     "dist"
   ],
@@ -23,6 +31,7 @@
   },
   "scripts": {
     "build": "vp pack",
+    "build:registry": "shadcn build registry.json --output build/r",
     "dev": "vp pack --watch",
     "dev:stories": "ladle serve --viteConfig ladle.vite.config.ts",
     "test": "vp test",
@@ -66,6 +75,7 @@
     "playwright": "1.60.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "shadcn": "4.11.0",
     "tailwind-merge": "3.6.0",
     "tailwindcss": "4.3.0",
     "typescript": "^6.0.3",

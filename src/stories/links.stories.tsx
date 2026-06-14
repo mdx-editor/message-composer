@@ -85,6 +85,7 @@ const CustomLinkControls = () => {
     >
       <input aria-label="Link URL" value={url} onChange={(event) => setUrl(event.target.value)} />
       <button
+        className="story-button"
         type="button"
         aria-pressed={currentLink !== null}
         onClick={() => {
@@ -94,7 +95,7 @@ const CustomLinkControls = () => {
       >
         Apply link
       </button>
-      <button type="button" disabled={currentLink === null} onClick={() => removeLink()}>
+      <button className="story-button" type="button" disabled={currentLink === null} onClick={() => removeLink()}>
         Remove link
       </button>
     </div>

@@ -20,7 +20,7 @@ import {
 import "./tailwind.css";
 
 export default {
-  title: "SlashCommands",
+  title: "Slash Commands",
 };
 
 const layoutStyle = { display: "grid", gap: 8, maxWidth: 640, paddingTop: 360 } as const;
@@ -279,7 +279,7 @@ function ConversationContext() {
   );
 }
 
-export const RegistryUI = () => {
+function RegistrySlashCommandDemo({ showInspectors = true }: { showInspectors?: boolean }) {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
   const [submitted, setSubmitted] = useState<MessageComposerValue | null>(null);
 
@@ -292,9 +292,17 @@ export const RegistryUI = () => {
         onValueChange={setLastChange}
         onSubmit={setSubmitted}
       />
-      <Inspectors lastChange={lastChange} submitted={submitted} />
+      {showInspectors ? <Inspectors lastChange={lastChange} submitted={submitted} /> : null}
     </div>
   );
+}
+
+export const RegistryUI = () => {
+  return <RegistrySlashCommandDemo />;
+};
+
+export const PublicDemo = () => {
+  return <RegistrySlashCommandDemo showInspectors={false} />;
 };
 
 const CustomCommandShelf = () => {
@@ -315,6 +323,7 @@ const CustomCommandShelf = () => {
       ))}
       {results.map((item, index) => (
         <button
+          className="story-button"
           key={item.id}
           type="button"
           aria-pressed={index === highlight}
@@ -334,7 +343,7 @@ const CustomChipList = () => {
   return (
     <div data-testid="custom-chip-list">
       {chips.map((chip) => (
-        <button key={chip.id} type="button" onClick={() => remove(chip.id)}>
+        <button className="story-button" key={chip.id} type="button" onClick={() => remove(chip.id)}>
           {chip.label}
         </button>
       ))}
