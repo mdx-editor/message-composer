@@ -102,13 +102,29 @@ vp run build:registry
 
 ## Agent Skills
 
-Install the repository skills with skills.sh:
+This repository publishes Codex/agent skills through skills.sh.
+
+Install them from GitHub:
 
 ```sh
 npx skills add mdx-editor/message-composer
 ```
 
-Included skills:
+The install adds two skills:
 
-- `message-composer-integrator`
-- `message-composer-maintainer`
+| Skill                         | Use it when                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `message-composer-integrator` | Adding `@mdxeditor/message-composer` to a React chat or AI-agent app, choosing plugins, or adding UI |
+| `message-composer-maintainer` | Working inside this repository on plugins, registry components, tests, docs, stories, or releases    |
+
+After installing, reference a skill by name in your agent prompt:
+
+```txt
+Use $message-composer-integrator to add a controlled composer with formatting and attachments.
+```
+
+```txt
+Use $message-composer-maintainer to add a browser test for slash-command keyboard navigation.
+```
+
+Run the same `npx skills add mdx-editor/message-composer` command again to update the installed skills after this repository changes.
