@@ -4,14 +4,14 @@ set -euo pipefail
 repo="${GITHUB_REPO:-mdx-editor/message-composer}"
 secret_name="${GITHUB_SECRET_NAME:-NPM_TOKEN}"
 npm_scope="${NPM_SCOPE:-mdxeditor}"
-expires_days="${NPM_TOKEN_EXPIRES_DAYS:-7}"
+expires_days="${NPM_TOKEN_EXPIRES_DAYS:-1}"
 token_name="${NPM_TOKEN_NAME:-message-composer bootstrap publish $(date -u +%Y%m%dT%H%M%SZ)}"
 token_description="${NPM_TOKEN_DESCRIPTION:-Temporary semantic-release bootstrap token for mdx-editor/message-composer}"
 cache_dir="${NPM_CONFIG_CACHE:-${TMPDIR:-/tmp}/message-composer-npm-cache}"
 
 usage() {
   cat <<EOF
-Create a temporary npm package-scope publish token and store it as a GitHub Actions secret.
+Create a temporary npm publish token and store it as a GitHub Actions secret.
 
 Usage:
   scripts/create-bootstrap-npm-token-secret.sh
@@ -19,16 +19,15 @@ Usage:
 Environment overrides:
   GITHUB_REPO              GitHub repo that receives the secret. Default: ${repo}
   GITHUB_SECRET_NAME       Secret name. Default: ${secret_name}
-  NPM_SCOPE                npm package scope without @. Default: ${npm_scope}
+  NPM_SCOPE                npm package scope without @. Used for help text only. Default: ${npm_scope}
   NPM_TOKEN_EXPIRES_DAYS   Token lifetime in days. Default: ${expires_days}
   NPM_PASSWORD             npm password. If omitted, the script prompts.
   NPM_OTP                  npm one-time password. If omitted, the script prompts.
 
-The token is intentionally scoped to the npm package scope @${npm_scope}, not to
-a single package, so it can bootstrap the first publish before
-@${npm_scope}/message-composer exists. The release workflow publishes through
-an npm publish command because @semantic-release/npm verifies auth through
-npm whoami, which rejects this scoped granular token.
+The first publish creates @${npm_scope}/message-composer. npm rejects that
+package creation when the bootstrap token is limited to @${npm_scope}, so this
+helper creates a short-lived all-packages token. Revoke it and remove the
+GitHub secret as soon as the package exists and trusted publishing is configured.
 EOF
 }
 
@@ -74,7 +73,7 @@ fi
 
 mkdir -p "${cache_dir}"
 
-echo "Creating temporary npm token scoped to @${npm_scope} for ${expires_days} day(s)..." >&2
+echo "Creating temporary all-packages npm token for ${expires_days} day(s)..." >&2
 
 npm_args=(
   token
@@ -83,7 +82,7 @@ npm_args=(
   --name "${token_name}"
   --token-description "${token_description}"
   --expires "${expires_days}"
-  --scopes "${npm_scope}"
+  --packages-all
   --packages-and-scopes-permission read-write
   --bypass-2fa
 )
