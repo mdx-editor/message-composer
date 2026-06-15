@@ -9,8 +9,8 @@ Use this reference before shipping repository-level changes.
 - Release-affecting merge or squash commit titles use Conventional Commits.
 - `vp check`, `vp test`, and `vp pack` pass before npm publishing.
 - The npm trusted publisher points at GitHub repository `mdx-editor/message-composer` and workflow filename `release.yml`.
-- If trusted publishing cannot be configured before first publish, `vp run release:bootstrap-token` creates and dry-run checks a one-day all-packages `NPM_TOKEN` secret.
-- Any temporary first-publish `NPM_TOKEN` secret has been removed and revoked after trusted publishing is configured.
+- The npm package exists as public package `@mdxeditor/message-composer`; verify the current published version and dist-tags with `npm view @mdxeditor/message-composer version dist-tags --json`.
+- Any temporary `NPM_TOKEN` repository secret has been removed and the corresponding npm token has been revoked after trusted publishing is configured.
 - A failed release tag has been deleted before rerunning semantic-release.
 
 ## Demos

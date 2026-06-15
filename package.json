@@ -35,7 +35,6 @@
     "build:registry": "shadcn build registry.json --output build/r",
     "dev": "vp pack --watch",
     "dev:stories": "ladle serve --viteConfig ladle.vite.config.ts",
-    "release:bootstrap-token": "scripts/create-bootstrap-npm-token-secret.sh",
     "test": "vp test",
     "check": "vp check",
     "build:stories": "ladle build --viteConfig ladle.vite.config.ts",
