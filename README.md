@@ -1,21 +1,42 @@
 # Message Composer
 
-The message composer is a React component for user input in human/chat interfaces.
+Message Composer is a React component for building markdown-first chat and agent input experiences.
 
-## Inspirations
+The core package is headless and intentionally small. It provides the editor, value model, submit semantics, and optional behavior plugins. First-party shadcn/Base UI components are published separately through the repository's shadcn registry.
 
-- ChatGPT (desktop)
-- Claude
-- Codex
-- Slack
-- Discord
+## Install
 
-## Goal
+```sh
+pnpm add @mdxeditor/message-composer
+```
 
-- The component should be usable for both traditional chats and AI agent UI.
-- Output should be markdown
+Render the core composer:
 
-## Features
+```tsx
+import { MessageComposer } from "@mdxeditor/message-composer";
+
+export function Composer() {
+  return (
+    <MessageComposer
+      editorProps={{ placeholder: "Message..." }}
+      onSubmit={(value) => {
+        console.log(value.markdown);
+      }}
+    />
+  );
+}
+```
+
+Add optional behavior with plugin subpaths:
+
+```tsx
+import { MessageComposer } from "@mdxeditor/message-composer";
+import { formattingPlugin } from "@mdxeditor/message-composer/plugins/formatting";
+
+export function Composer() {
+  return <MessageComposer plugins={[formattingPlugin()]} />;
+}
+```
 
 ## Documentation
 
