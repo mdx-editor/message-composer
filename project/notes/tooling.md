@@ -40,4 +40,6 @@ Releases use `semantic-release` from `.github/workflows/release.yml`.
 The npm package settings must trust GitHub Actions for repository `mdx-editor/message-composer` and workflow filename `release.yml`.
 If npm does not allow trusted publisher setup before the package exists, use a temporary granular `NPM_TOKEN` repository secret for the first `1.0.0` publish, then configure trusted publishing and revoke the token.
 
-Use `vp run release:bootstrap-token` to create that temporary token from the npm CLI. The helper scopes the token to npm org/scope `mdxeditor`, grants read/write package and scope access, stores it as the GitHub Actions secret `NPM_TOKEN`, and expires it after seven days by default.
+Use `vp run release:bootstrap-token` to create that temporary token from the npm CLI. The helper scopes the token to npm package scope `@mdxeditor`, grants read/write package and scope access, checks it with `npm publish --dry-run`, stores it as the GitHub Actions secret `NPM_TOKEN`, and expires it after seven days by default.
+
+`@semantic-release/npm` is configured with `npmPublish: false` so it still writes the computed package version but does not run its `npm whoami` auth verifier. The actual publish command runs through `@semantic-release/exec`, which lets the first publish use the scoped granular bootstrap token and future publishes use npm trusted publishing/OIDC.

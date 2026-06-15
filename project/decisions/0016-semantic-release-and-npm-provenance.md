@@ -16,6 +16,8 @@ The first automated release starts at `1.0.0`. Vite+ remains responsible for ver
 
 Npm publishing uses trusted publishing/OIDC through the release workflow, with package provenance enabled in `package.json`.
 
+`@semantic-release/npm` writes the computed package version but does not perform the final publish. The final `npm publish` command runs through `@semantic-release/exec` so a temporary `@mdxeditor`-scoped granular token can bootstrap the first publish without being rejected by `@semantic-release/npm`'s `npm whoami` auth verifier.
+
 ## Consequences
 
 Release-affecting PR merge or squash titles must use Conventional Commit types such as `fix:`, `feat:`, and `feat!:`. Non-release changes can use non-release types such as `docs:`, `test:`, `refactor:`, `chore:`, or `ci:`.
