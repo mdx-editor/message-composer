@@ -6,7 +6,11 @@ Use this reference before shipping repository-level changes.
 
 - `package.json` has correct `homepage`, `repository`, and `bugs` URLs using GitHub org `mdx-editor`.
 - Npm package scope remains `@mdxeditor/message-composer` unless explicitly changed.
-- `vp pack` passes before npm publishing.
+- Release-affecting merge or squash commit titles use Conventional Commits.
+- `vp check`, `vp test`, and `vp pack` pass before npm publishing.
+- The npm trusted publisher points at GitHub repository `mdx-editor/message-composer` and workflow filename `release.yml`.
+- If trusted publishing cannot be configured before first publish, `vp run release:bootstrap-token` creates a temporary npm org-scoped `NPM_TOKEN` secret.
+- Any temporary first-publish `NPM_TOKEN` secret has been removed and revoked after trusted publishing is configured.
 
 ## Demos
 

@@ -29,4 +29,15 @@ Storybook is a strong alternative if the story environment needs to become publi
 
 ## Release Workflow
 
-No release workflow has been chosen yet. `bumpp` was removed from the scaffold; release tooling should be selected later.
+Releases use `semantic-release` from `.github/workflows/release.yml`.
+
+- Merge or squash commits to `main` with Conventional Commit titles.
+- `fix:` creates patch releases, `feat:` creates minor releases, and `feat!:` or a `BREAKING CHANGE:` footer creates major releases.
+- The first automated release is `1.0.0` because there are no existing release tags.
+- The workflow runs `vp check`, `vp test`, and `vp pack` before publishing.
+- Npm publishing uses trusted publishing/OIDC and package provenance.
+
+The npm package settings must trust GitHub Actions for repository `mdx-editor/message-composer` and workflow filename `release.yml`.
+If npm does not allow trusted publisher setup before the package exists, use a temporary granular `NPM_TOKEN` repository secret for the first `1.0.0` publish, then configure trusted publishing and revoke the token.
+
+Use `vp run release:bootstrap-token` to create that temporary token from the npm CLI. The helper scopes the token to npm org/scope `mdxeditor`, grants read/write package and scope access, stores it as the GitHub Actions secret `NPM_TOKEN`, and expires it after seven days by default.
