@@ -33,15 +33,13 @@ Releases use `semantic-release` from `.github/workflows/release.yml`.
 
 - Merge or squash commits to `main` with Conventional Commit titles.
 - `fix:` creates patch releases, `feat:` creates minor releases, and `feat!:` or a `BREAKING CHANGE:` footer creates major releases.
-- The first automated release is `1.0.0` because there are no existing release tags.
 - The workflow runs `vp check`, `vp test`, and `vp pack` before publishing.
 - Npm publishing uses trusted publishing/OIDC and package provenance.
 
-The npm package settings must trust GitHub Actions for repository `mdx-editor/message-composer` and workflow filename `release.yml`.
-If npm does not allow trusted publisher setup before the package exists, use a temporary granular `NPM_TOKEN` repository secret for the first `1.0.0` publish, then configure trusted publishing and revoke the token.
+The npm package settings must trust GitHub Actions for repository `mdx-editor/message-composer` and workflow filename `release.yml`. Once trusted publishing is confirmed, remove any `NPM_TOKEN` repository secret and revoke the corresponding npm token.
 
-Use `vp run release:bootstrap-token` to create that temporary token from the npm CLI. The helper creates a one-day all-packages token because npm rejects first package creation under `@mdxeditor` when the token is limited to that scope. It grants read/write package and scope access, checks it with `npm publish --dry-run`, stores it as the GitHub Actions secret `NPM_TOKEN`, and should be revoked after the package exists.
+The initial `1.0.0` npm package was bootstrapped manually from the existing `v1.0.0` git tag on 2026-06-15 because npm rejected first package creation through both trusted publishing and granular-token bootstrap flows. The package now exists as public npm package `@mdxeditor/message-composer`, with `latest` pointing at `1.0.0`.
 
-`@semantic-release/npm` is configured with `npmPublish: false` so it still writes the computed package version but does not run its `npm whoami` auth verifier. The actual publish command runs through `@semantic-release/exec`, which lets the first publish use the temporary bootstrap token and future publishes use npm trusted publishing/OIDC.
+`@semantic-release/npm` is configured with `npmPublish: false` so it still writes the computed package version but does not run its `npm whoami` auth verifier. The actual publish command runs through `@semantic-release/exec`, which lets publishes use npm trusted publishing/OIDC.
 
 If a release creates a git tag but fails before npm publish, delete the failed tag before rerunning semantic-release. Otherwise semantic-release will treat that version as already released.

@@ -12,11 +12,11 @@ The repository publishes a single public npm package, `@mdxeditor/message-compos
 
 Use `semantic-release` from GitHub Actions on `main` to determine package versions from Conventional Commit messages, create git tags and GitHub releases, and publish to npm.
 
-The first automated release starts at `1.0.0`. Vite+ remains responsible for verification and packaging through `vp check`, `vp test`, and `vp pack`.
+The first release starts at `1.0.0`. Vite+ remains responsible for verification and packaging through `vp check`, `vp test`, and `vp pack`.
 
 Npm publishing uses trusted publishing/OIDC through the release workflow, with package provenance enabled in `package.json`.
 
-`@semantic-release/npm` writes the computed package version but does not perform the final publish. The final `npm publish` command runs through `@semantic-release/exec` so the first publish can use a temporary bootstrap token without being rejected by `@semantic-release/npm`'s `npm whoami` auth verifier.
+`@semantic-release/npm` writes the computed package version but does not perform the final publish. The final `npm publish` command runs through `@semantic-release/exec` so publishing can use npm trusted publishing/OIDC without being blocked by `@semantic-release/npm`'s `npm whoami` auth verifier.
 
 ## Consequences
 
@@ -24,4 +24,6 @@ Release-affecting PR merge or squash titles must use Conventional Commit types s
 
 GitHub Releases are the generated changelog. The repository does not commit release changelog/version bumps back to `main`.
 
-The npm package must have a trusted publisher configured for GitHub Actions before tokenless OIDC publishing can succeed. Because npm trusted publisher settings are configured on an npm package, the first `1.0.0` publish may need a temporary granular `NPM_TOKEN` secret if npm does not allow the trusted publisher to be configured before the package exists. npm package-scope tokens do not appear to be able to create the first package under an organization scope, so that bootstrap token may need all-packages write access with a short expiration. Revoke that token once trusted publishing is configured.
+The initial `1.0.0` package was manually published locally on 2026-06-15 from the `v1.0.0` git tag, without provenance, because npm rejected first package creation through the automated trusted-publishing flow and through granular-token bootstrap attempts.
+
+Future npm publishes should run from GitHub Actions with provenance once the npm trusted publisher is configured for repository `mdx-editor/message-composer` and workflow filename `release.yml`. Remove any temporary `NPM_TOKEN` repository secret and revoke the corresponding npm token once trusted publishing is confirmed.
