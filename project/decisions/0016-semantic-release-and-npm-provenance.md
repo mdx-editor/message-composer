@@ -26,4 +26,4 @@ GitHub Releases are the generated changelog. The repository does not commit rele
 
 The initial `1.0.0` package was manually published locally on 2026-06-15 from the `v1.0.0` git tag, without provenance, because npm rejected first package creation through the automated trusted-publishing flow and through granular-token bootstrap attempts.
 
-Future npm publishes should run from GitHub Actions with provenance once the npm trusted publisher is configured for repository `mdx-editor/message-composer` and workflow filename `release.yml`. Remove any temporary `NPM_TOKEN` repository secret and revoke the corresponding npm token once trusted publishing is confirmed.
+Future npm publishes run from GitHub Actions with provenance through the npm trusted publisher configured for repository `mdx-editor/message-composer` and workflow filename `release.yml`. The release workflow does not support an `NPM_TOKEN` fallback, so publishing verifies the trusted-publishing path directly.

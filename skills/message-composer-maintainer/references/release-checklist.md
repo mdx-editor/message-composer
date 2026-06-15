@@ -10,7 +10,7 @@ Use this reference before shipping repository-level changes.
 - `vp check`, `vp test`, and `vp pack` pass before npm publishing.
 - The npm trusted publisher points at GitHub repository `mdx-editor/message-composer` and workflow filename `release.yml`.
 - The npm package exists as public package `@mdxeditor/message-composer`; verify the current published version and dist-tags with `npm view @mdxeditor/message-composer version dist-tags --json`.
-- Any temporary `NPM_TOKEN` repository secret has been removed and the corresponding npm token has been revoked after trusted publishing is configured.
+- No `NPM_TOKEN` repository secret is configured; releases should publish through trusted publishing/OIDC only.
 - A failed release tag has been deleted before rerunning semantic-release.
 
 ## Demos
