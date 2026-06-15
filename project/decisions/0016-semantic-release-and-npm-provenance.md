@@ -16,7 +16,7 @@ The first automated release starts at `1.0.0`. Vite+ remains responsible for ver
 
 Npm publishing uses trusted publishing/OIDC through the release workflow, with package provenance enabled in `package.json`.
 
-`@semantic-release/npm` writes the computed package version but does not perform the final publish. The final `npm publish` command runs through `@semantic-release/exec` so a temporary `@mdxeditor`-scoped granular token can bootstrap the first publish without being rejected by `@semantic-release/npm`'s `npm whoami` auth verifier.
+`@semantic-release/npm` writes the computed package version but does not perform the final publish. The final `npm publish` command runs through `@semantic-release/exec` so the first publish can use a temporary bootstrap token without being rejected by `@semantic-release/npm`'s `npm whoami` auth verifier.
 
 ## Consequences
 
@@ -24,4 +24,4 @@ Release-affecting PR merge or squash titles must use Conventional Commit types s
 
 GitHub Releases are the generated changelog. The repository does not commit release changelog/version bumps back to `main`.
 
-The npm package must have a trusted publisher configured for GitHub Actions before tokenless OIDC publishing can succeed. Because npm trusted publisher settings are configured on an npm package, the first `1.0.0` publish may need a temporary granular `NPM_TOKEN` secret if npm does not allow the trusted publisher to be configured before the package exists. Revoke that token once trusted publishing is configured.
+The npm package must have a trusted publisher configured for GitHub Actions before tokenless OIDC publishing can succeed. Because npm trusted publisher settings are configured on an npm package, the first `1.0.0` publish may need a temporary granular `NPM_TOKEN` secret if npm does not allow the trusted publisher to be configured before the package exists. npm package-scope tokens do not appear to be able to create the first package under an organization scope, so that bootstrap token may need all-packages write access with a short expiration. Revoke that token once trusted publishing is configured.
