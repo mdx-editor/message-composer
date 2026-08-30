@@ -104,6 +104,8 @@ const UnstyledToolbar = () => {
 
 const plugins = [formattingPlugin()];
 
+const CompactFormattingToolbar = () => <FormattingToolbar visibleControls={["bold", "link", "bullet-list"]} />;
+
 export const Toolbar = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);
   const [lastSubmit, setLastSubmit] = useState<MessageComposerValue | null>(null);
@@ -126,6 +128,16 @@ export const Toolbar = () => {
     </div>
   );
 };
+
+export const CompactToolbar = () => (
+  <div style={layoutStyle}>
+    <RegistryMessageComposer
+      plugins={plugins}
+      slots={{ toolbar: CompactFormattingToolbar }}
+      editorProps={{ "aria-label": "Message", placeholder: "Write a message..." }}
+    />
+  </div>
+);
 
 export const CustomUI = () => {
   const [lastChange, setLastChange] = useState<MessageComposerValue | null>(null);

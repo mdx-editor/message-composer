@@ -11,6 +11,13 @@ import {
 
 export type MessageComposerSubmitHandler = (value: MessageComposerValue) => void | Promise<void>;
 
+export interface MessageComposerSubmitBlocker {
+  /** Stable owner-defined identity used to update or clear this blocker. */
+  id: string;
+  /** Accessible explanation suitable for custom submit UI. */
+  message: string;
+}
+
 /** Canonical draft value. In controlled mode it mirrors the host `value` prop. */
 export const draftValue$ = Cell<MessageComposerValue>(createEmptyMessageComposerValue());
 
@@ -23,6 +30,23 @@ export const controlled$ = Cell(false);
 export const disabled$ = Cell(false);
 export const submitting$ = Cell(false);
 export const submitError$ = Cell<unknown>(null);
+
+/** Adds or replaces one submit blocker by its stable id. */
+export const setSubmitBlocker$ = Stream<MessageComposerSubmitBlocker>(false);
+
+/** Clears one submit blocker by id. */
+export const clearSubmitBlocker$ = Stream<string>(false);
+
+const submitBlockerRegistry$ = Cell<ReadonlyMap<string, MessageComposerSubmitBlocker>>(new Map());
+
+/** Active blockers in deterministic insertion order. */
+export const submitBlockers$ = DerivedCell<readonly MessageComposerSubmitBlocker[]>(
+  [],
+  e.pipe(
+    submitBlockerRegistry$,
+    e.map((registry) => [...registry.values()])
+  )
+);
 
 export const markdown$ = DerivedCell(
   "",
@@ -97,6 +121,33 @@ addNodeInit((engine) => {
   engine.register(agent$);
 }, draftValue$);
 
+// Blocker actions can fire before any UI reads the derived state. Eagerly
+// registering the projection prevents it from missing those early emissions.
+addNodeInit((engine) => {
+  engine.register(submitBlockers$);
+}, submitBlockerRegistry$);
+
+e.sub(setSubmitBlocker$, (blocker, engine) => {
+  const registry = engine.getValue(submitBlockerRegistry$);
+  const current = registry.get(blocker.id);
+  if (current?.message === blocker.message) {
+    return;
+  }
+  const next = new Map(registry);
+  next.set(blocker.id, blocker);
+  engine.pub(submitBlockerRegistry$, next);
+});
+
+e.sub(clearSubmitBlocker$, (id, engine) => {
+  const registry = engine.getValue(submitBlockerRegistry$);
+  if (!registry.has(id)) {
+    return;
+  }
+  const next = new Map(registry);
+  next.delete(id);
+  engine.pub(submitBlockerRegistry$, next);
+});
+
 e.link(editorChange$, valueChange$);
 
 e.link(
@@ -136,7 +187,7 @@ e.sub(reset$, (_, engine) => {
 });
 
 e.sub(submit$, (_, engine) => {
-  if (engine.getValue(disabled$) || engine.getValue(submitting$)) {
+  if (engine.getValue(disabled$) || engine.getValue(submitting$) || engine.getValue(submitBlockers$).length > 0) {
     return;
   }
   engine.pub(submitError$, null);

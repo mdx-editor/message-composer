@@ -40,7 +40,7 @@
       "title": "Formatting Toolbar",
       "description": "Formatting toolbar with text formats, block formats, and link editing controls.",
       "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
-      "dependencies": ["@base-ui-components/react@1.0.0-rc.0", "@mdxeditor/message-composer"],
+      "dependencies": ["@base-ui/react@1.7.0", "@mdxeditor/message-composer"],
       "files": [
         {
           "path": "registry/components/formatting/formatting-toolbar.tsx",
@@ -56,7 +56,7 @@
       "title": "Model Effort Picker",
       "description": "Model and effort selector UI for the agent settings plugin.",
       "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
-      "dependencies": ["@base-ui-components/react@1.0.0-rc.0", "@mdxeditor/message-composer"],
+      "dependencies": ["@base-ui/react@1.7.0", "@mdxeditor/message-composer"],
       "files": [
         {
           "path": "registry/components/agent-settings/model-effort-picker.tsx",

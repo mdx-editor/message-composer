@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
-import { CustomUI, MarkdownShortcuts, Toolbar } from "../../src/stories/formatting.stories.tsx";
+import { CompactToolbar, CustomUI, MarkdownShortcuts, Toolbar } from "../../src/stories/formatting.stories.tsx";
 
 let root: Root | undefined;
 let container: HTMLElement | undefined;
@@ -225,6 +225,21 @@ test("the toolbar navigates between controls with arrow keys", async () => {
   expect(document.activeElement?.getAttribute("aria-label")).toBe("Strikethrough");
   await userEvent.keyboard("{ArrowLeft}");
   expect(document.activeElement?.getAttribute("aria-label")).toBe("Italic");
+});
+
+test("a compact toolbar exposes only selected controls in canonical keyboard order", async () => {
+  const screen = renderStory(<CompactToolbar />);
+  const boldButton = screen.getByRole("button", { name: "Bold" });
+  await expect.element(boldButton).toBeVisible();
+
+  await expect.element(screen.getByRole("button", { name: "Italic" })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("button", { name: "Quote" })).not.toBeInTheDocument();
+
+  (boldButton.element() as HTMLElement).focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Link");
+  await userEvent.keyboard("{ArrowRight}");
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Bullet list");
 });
 
 test("custom unstyled toolbar drives the same contracts, including links", async () => {

@@ -2,6 +2,9 @@
 
 The core package is headless. First-party UI is distributed as shadcn/Base UI registry items that install source files into the host app.
 
+Interactive items use the current `@base-ui/react` package. The registry does not install the
+deprecated `@base-ui-components/react` generation.
+
 Install the full current kit:
 
 ```sh
@@ -26,6 +29,9 @@ https://mdx-editor.github.io/message-composer/r/<item>.json
 ```
 
 Use those URLs as direct JSON fallback installs when needed.
+
+The formatting toolbar supports a `visibleControls` subset. The attachment list supports a complete
+`renderPreview` override or an abortable `resolvePreview` function for authenticated URLs and blobs.
 
 ## Local Validation
 

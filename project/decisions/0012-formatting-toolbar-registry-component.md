@@ -11,16 +11,16 @@ Stage 4 shipped formatting behavior (`formattingState$`, `formatText$`, `toggleB
 
 **Toolbar UI is registry-only.** The core package ships no toolbar component, styled or unstyled. The structural contract a toolbar needs is already public — the formatting cells/commands and the `toolbar` slot — and an unstyled example would become a second first-party UI surface to maintain and version. The unstyled toolbar survives as the custom-UI story fixture, which the story requirements demand anyway as proof that the contracts suffice without registry components.
 
-**Composition.** `FormattingToolbar` composes Base UI `Toolbar.Root`/`Toolbar.Button` (roving tabindex, arrow-key navigation) with Base UI `Toggle` rendered through the `render` prop, so every control gets `aria-pressed` and `data-pressed` for free while staying a single toolbar tab stop. Buttons are icon-only with `aria-label`s matching the names the existing browser tests already use, which transfers the stage 4 test suite from the unstyled story toolbar to the registry component unchanged.
+**Composition.** `FormattingToolbar` composes current `@base-ui/react` `Toolbar.Root`/`Toolbar.Button` (roving tabindex, arrow-key navigation) with `Toggle` rendered through the `render` prop, so every control gets `aria-pressed` and `data-pressed` for free while staying a single toolbar tab stop. Buttons are icon-only with stable `aria-label`s. `visibleControls` selects a compact subset while retaining canonical keyboard order.
 
 **Selection preservation.** The toolbar root prevents `mousedown` default, so clicking a control never moves focus out of the editor and format commands apply to the live selection — the same pattern the unstyled story toolbar established. Keyboard access is unaffected: focus can still enter the toolbar by Tab, and Lexical restores the editor selection when focus returns.
 
-**No Link control yet.** A link toggle needs URL input; that editing surface (popover/dialog over Base UI) is stage 8's deliverable. Shipping a `window.prompt` placeholder would bake in an interaction stage 8 immediately replaces. The first-party toolbar omits links until then; `toggleLink$` remains public and the custom-UI story demonstrates it.
+**Link editing.** The toolbar includes the Base UI popover link editor delivered in stage 8. The link control participates in the same focus-preservation and `visibleControls` contracts as other controls.
 
 ## Consequences
 
 Hosts that want a different toolbar write their own component against the same cells and commands; nothing in the registry component is privileged.
 
-Stage 8 extends the registry toolbar (or ships a companion component) with the link editor; the separator-grouped layout leaves room for it.
+Registry installation uses one Base UI generation. No registry source or manifest depends on the deprecated `@base-ui-components/react` package.
 
 The registry component asserts its contract through the existing formatting browser tests plus new ones for focus preservation and arrow-key navigation.

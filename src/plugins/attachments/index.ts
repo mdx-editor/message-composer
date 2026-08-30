@@ -1,34 +1,50 @@
 import { Cell, e, Stream, Trigger } from "@virtuoso.dev/reactive-engine-core";
 import { COMMAND_PRIORITY_HIGH, DRAGOVER_COMMAND, DROP_COMMAND, PASTE_COMMAND, type LexicalEditor } from "lexical";
 
-import { attachments$, disabled$, draftValue$, editorChange$ } from "../../core/nodes.ts";
+import {
+  attachments$,
+  clearSubmitBlocker$,
+  disabled$,
+  draftValue$,
+  editorChange$,
+  reset$,
+  setSubmitBlocker$,
+} from "../../core/nodes.ts";
 import type { MessageComposerPlugin } from "../../core/plugin.ts";
-import type { MessageComposerAttachment, MessageComposerValue } from "../../core/value.ts";
+import type {
+  MessageComposerAgentValue,
+  MessageComposerAttachment,
+  MessageComposerAudioClip,
+  MessageComposerMention,
+  MessageComposerValue,
+} from "../../core/value.ts";
 import { lexicalEditor$ } from "../../lexical/nodes.ts";
 
 export { attachments$ };
 export type { MessageComposerAttachment, MessageComposerAttachmentStatus } from "../../core/value.ts";
 
-export interface MessageComposerAttachmentUploadContext {
+export interface MessageComposerAttachmentUploadContext<TData = unknown> {
   /** Snapshot of the attachment record at upload start. */
-  attachment: MessageComposerAttachment;
+  attachment: MessageComposerAttachment<TData>;
   /** Aborted when the attachment is removed or the composer disposes (ADR 0011). */
   signal: AbortSignal;
   /** Reports upload progress as a 0-1 fraction. */
   onProgress: (progress: number) => void;
 }
 
-export interface MessageComposerAttachmentUploadResult {
+export interface MessageComposerAttachmentUploadResult<TData = unknown> {
   url: string;
+  data?: TData;
 }
 
-export type MessageComposerAttachmentUploadHandler = (
+export type MessageComposerAttachmentUploadHandler<TData = unknown> = (
   file: File,
-  context: MessageComposerAttachmentUploadContext
-) => Promise<MessageComposerAttachmentUploadResult>;
+  context: MessageComposerAttachmentUploadContext<TData>
+) => Promise<MessageComposerAttachmentUploadResult<TData>>;
 
 export type MessageComposerAttachmentRejectionCode =
   | "file-too-large"
+  | "total-file-size-exceeded"
   | "type-not-accepted"
   | "too-many-files"
   | "custom";
@@ -39,18 +55,43 @@ export interface MessageComposerAttachmentRejection {
   message: string;
 }
 
-export interface MessageComposerAttachmentsConfig {
-  upload: MessageComposerAttachmentUploadHandler;
+export type MessageComposerAttachmentValidationDraft<TData = unknown> = Omit<
+  Readonly<MessageComposerValue<MessageComposerAgentValue, Record<string, unknown>, TData>>,
+  "attachments" | "mentions" | "audioClips"
+> & {
+  readonly attachments: readonly Readonly<MessageComposerAttachment<TData>>[];
+  readonly mentions: readonly Readonly<MessageComposerMention>[];
+  readonly audioClips: readonly Readonly<MessageComposerAudioClip>[];
+};
+
+export interface MessageComposerAttachmentValidationContext<TData = unknown> {
+  /** Immutable snapshot of the draft before this ingestion batch. */
+  readonly draft: MessageComposerAttachmentValidationDraft<TData>;
+  /** Files accepted earlier in the current batch. */
+  readonly acceptedFiles: readonly File[];
+  /** Existing draft bytes plus files accepted earlier in the current batch. */
+  readonly totalFileSize: number;
+}
+
+export interface MessageComposerAttachmentRemoval<TData = unknown> {
+  attachment: MessageComposerAttachment<TData>;
+  reason: "explicit-removal";
+}
+
+export interface MessageComposerAttachmentsConfig<TData = unknown> {
+  upload: MessageComposerAttachmentUploadHandler<TData>;
   /** File-input accept string; also validates dropped and pasted files. */
   accept?: string;
   /** Per-file size limit in bytes. */
   maxFileSize?: number;
+  /** Aggregate size limit for existing and newly accepted draft attachments. */
+  maxTotalFileSize?: number;
   /** Maximum number of attachments in the draft. */
   maxCount?: number;
   /** Whether the picker allows selecting multiple files. Defaults to true. */
   multiple?: boolean;
   /** Returns an error message to reject the file; falsy accepts it. */
-  validate?: (file: File) => string | null | undefined;
+  validate?: (file: File, context: MessageComposerAttachmentValidationContext<TData>) => string | null | undefined;
 }
 
 /** Validated ingestion entry; the picker, drop, and paste handlers all feed it. */
@@ -58,6 +99,9 @@ export const addAttachmentFiles$ = Stream<File[]>(false);
 
 /** Removes the attachment from the draft and aborts its in-flight upload. */
 export const removeAttachment$ = Stream<string>(false);
+
+/** Accepted explicit removals, including the complete pre-removal snapshot. */
+export const attachmentRemoved$ = Stream<MessageComposerAttachmentRemoval>(false);
 
 /** Re-runs the upload for an `error` attachment that still has its local file. */
 export const retryAttachmentUpload$ = Stream<string>(false);
@@ -106,16 +150,6 @@ e.link(
   editorChange$
 );
 
-e.link(
-  e.pipe(
-    removeAttachment$,
-    e.withLatestFrom(draftValue$),
-    e.filter(([id, draft]) => draft.attachments.some((attachment) => attachment.id === id)),
-    e.map(([id, draft]) => ({ ...draft, attachments: draft.attachments.filter((entry) => entry.id !== id) }))
-  ),
-  editorChange$
-);
-
 e.sub(dismissAttachmentRejections$, (_, engine) => {
   engine.pub(attachmentRejections$, []);
 });
@@ -151,7 +185,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function createAttachmentRecord(file: File): MessageComposerAttachment {
+function createAttachmentRecord<TData>(file: File): MessageComposerAttachment<TData> {
   return {
     id: crypto.randomUUID(),
     name: file.name,
@@ -166,7 +200,24 @@ function dataTransferCarriesFiles(event: DragEvent): boolean {
   return event.dataTransfer?.types.includes("Files") ?? false;
 }
 
-export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): MessageComposerPlugin {
+function immutableDraftSnapshot<TData>(draft: MessageComposerValue): MessageComposerAttachmentValidationDraft<TData> {
+  return Object.freeze({
+    ...draft,
+    attachments: Object.freeze(
+      draft.attachments.map((attachment) => Object.freeze({ ...attachment }))
+    ) as readonly Readonly<MessageComposerAttachment<TData>>[],
+    mentions: Object.freeze(draft.mentions.map((mention) => Object.freeze({ ...mention }))),
+    audioClips: Object.freeze(draft.audioClips.map((clip) => Object.freeze({ ...clip }))),
+    ...(draft.extensions === undefined ? {} : { extensions: Object.freeze({ ...draft.extensions }) }),
+    ...(draft.agent === undefined ? {} : { agent: Object.freeze({ ...draft.agent }) }),
+  });
+}
+
+const ATTACHMENT_SUBMIT_BLOCKER_ID = "attachments:not-ready";
+
+export function attachmentsPlugin<TData = unknown>(
+  config: MessageComposerAttachmentsConfig<TData>
+): MessageComposerPlugin {
   const multiple = config.multiple ?? true;
   const matchers = config.accept === undefined ? null : acceptMatchers(config.accept);
 
@@ -177,7 +228,36 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
       let pickerInput: HTMLInputElement | null = null;
       let cleanupEditor: (() => void) | null = null;
 
-      const startUpload = (record: MessageComposerAttachment, file: File) => {
+      const updateSubmitBlocker = (draft: MessageComposerValue) => {
+        const blocked = draft.attachments.some(
+          (attachment) =>
+            attachment.status === "pending" || attachment.status === "uploading" || attachment.status === "error"
+        );
+        if (blocked) {
+          engine.pub(setSubmitBlocker$, {
+            id: ATTACHMENT_SUBMIT_BLOCKER_ID,
+            message: "Resolve or remove attachments before submitting.",
+          });
+        } else {
+          engine.pub(clearSubmitBlocker$, ATTACHMENT_SUBMIT_BLOCKER_ID);
+        }
+      };
+
+      const abortUpload = (id: string) => {
+        const controller = controllers.get(id);
+        if (controller) {
+          controllers.delete(id);
+          controller.abort();
+        }
+      };
+
+      const abortAllUploads = () => {
+        for (const id of controllers.keys()) {
+          abortUpload(id);
+        }
+      };
+
+      const startUpload = (record: MessageComposerAttachment<TData>, file: File) => {
         const controller = new AbortController();
         controllers.set(record.id, controller);
         // Settlements of aborted (removed) or disposed uploads are discarded, so
@@ -202,7 +282,7 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
             patch: { progress: Math.min(1, Math.max(0, progress)) },
           });
         };
-        let result: Promise<MessageComposerAttachmentUploadResult>;
+        let result: Promise<MessageComposerAttachmentUploadResult<TData>>;
         try {
           result = config.upload(file, { attachment: record, signal: controller.signal, onProgress });
         } catch (error) {
@@ -210,8 +290,8 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
           return;
         }
         void result.then(
-          ({ url }) => {
-            finish({ status: "success", url, progress: undefined, error: undefined });
+          ({ url, data }) => {
+            finish({ status: "success", url, data, progress: undefined, error: undefined });
           },
           (error: unknown) => {
             finish({ status: "error", error: errorMessage(error), progress: undefined });
@@ -219,7 +299,13 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
         );
       };
 
-      const validateFile = (file: File, currentCount: number): MessageComposerAttachmentRejection | null => {
+      const validateFile = (
+        file: File,
+        currentCount: number,
+        totalFileSize: number,
+        acceptedFiles: readonly File[],
+        draft: MessageComposerAttachmentValidationDraft<TData>
+      ): MessageComposerAttachmentRejection | null => {
         if (config.maxCount !== undefined && currentCount >= config.maxCount) {
           return {
             file,
@@ -237,7 +323,21 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
             message: `"${file.name}" exceeds the ${formatSize(config.maxFileSize)} limit.`,
           };
         }
-        const custom = config.validate?.(file);
+        if (config.maxTotalFileSize !== undefined && totalFileSize + file.size > config.maxTotalFileSize) {
+          return {
+            file,
+            code: "total-file-size-exceeded",
+            message: `Adding "${file.name}" would exceed the ${formatSize(config.maxTotalFileSize)} draft limit.`,
+          };
+        }
+        const custom = config.validate?.(
+          file,
+          Object.freeze({
+            draft,
+            acceptedFiles: Object.freeze([...acceptedFiles]),
+            totalFileSize,
+          })
+        );
         if (custom) {
           return { file, code: "custom", message: custom };
         }
@@ -249,16 +349,22 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
           return;
         }
         const rejections: MessageComposerAttachmentRejection[] = [];
-        const accepted: { record: MessageComposerAttachment; file: File }[] = [];
-        let count = engine.getValue(draftValue$).attachments.length;
+        const accepted: { record: MessageComposerAttachment<TData>; file: File }[] = [];
+        const currentDraft = engine.getValue(draftValue$);
+        const validationDraft = immutableDraftSnapshot<TData>(currentDraft);
+        const acceptedFiles: File[] = [];
+        let count = currentDraft.attachments.length;
+        let totalFileSize = currentDraft.attachments.reduce((total, attachment) => total + attachment.size, 0);
         for (const file of files) {
-          const rejection = validateFile(file, count);
+          const rejection = validateFile(file, count, totalFileSize, acceptedFiles, validationDraft);
           if (rejection) {
             rejections.push(rejection);
             continue;
           }
           accepted.push({ record: createAttachmentRecord(file), file });
+          acceptedFiles.push(file);
           count += 1;
+          totalFileSize += file.size;
         }
         // Each ingestion replaces the rejection batch, so a later valid add clears
         // stale errors without a separate dismissal.
@@ -284,8 +390,8 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
         if (!attachment?.file || attachment.status !== "error" || controllers.has(id)) {
           return;
         }
-        const record: MessageComposerAttachment = {
-          ...attachment,
+        const record: MessageComposerAttachment<TData> = {
+          ...(attachment as MessageComposerAttachment<TData>),
           status: "uploading",
           error: undefined,
           progress: undefined,
@@ -295,11 +401,36 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
       });
 
       const unsubRemove = engine.sub(removeAttachment$, (id) => {
-        const controller = controllers.get(id);
-        if (controller) {
-          controllers.delete(id);
-          controller.abort();
+        const draft = engine.getValue(draftValue$);
+        const attachment = draft.attachments.find((entry) => entry.id === id);
+        if (!attachment) {
+          return;
         }
+        abortUpload(id);
+        engine.pub(editorChange$, {
+          ...draft,
+          attachments: draft.attachments.filter((entry) => entry.id !== id),
+        });
+        engine.pub(attachmentRemoved$, {
+          attachment: attachment as MessageComposerAttachment<TData>,
+          reason: "explicit-removal",
+        });
+      });
+
+      updateSubmitBlocker(engine.getValue(draftValue$));
+      const unsubDraft = engine.sub(draftValue$, (draft) => {
+        updateSubmitBlocker(draft);
+        for (const [id, controller] of controllers) {
+          const attachment = draft.attachments.find((entry) => entry.id === id);
+          if (!attachment || attachment.status !== "uploading") {
+            controllers.delete(id);
+            controller.abort();
+          }
+        }
+      });
+
+      const unsubReset = engine.sub(reset$, () => {
+        abortAllUploads();
       });
 
       const unsubPicker = engine.sub(openAttachmentPicker$, () => {
@@ -395,13 +526,15 @@ export function attachmentsPlugin(config: MessageComposerAttachmentsConfig): Mes
         unsubAdd();
         unsubRetry();
         unsubRemove();
+        unsubDraft();
+        unsubReset();
         unsubPicker();
         unsubEditor();
         cleanupEditor?.();
-        for (const controller of controllers.values()) {
-          controller.abort();
+        abortAllUploads();
+        if (!engine.isDisposed) {
+          engine.pub(clearSubmitBlocker$, ATTACHMENT_SUBMIT_BLOCKER_ID);
         }
-        controllers.clear();
       };
     },
   };

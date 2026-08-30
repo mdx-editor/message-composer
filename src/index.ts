@@ -26,11 +26,15 @@ export {
   markdown$,
   mentions$,
   reset$,
+  clearSubmitBlocker$,
+  setSubmitBlocker$,
   setMarkdown$,
   submit$,
+  submitBlockers$,
   submitError$,
   submitting$,
   valueChange$,
+  type MessageComposerSubmitBlocker,
   type MessageComposerSubmitHandler,
 } from "./core/nodes.ts";
 

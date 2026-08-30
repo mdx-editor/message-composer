@@ -1,12 +1,14 @@
 import { StrictMode, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, test } from "vite-plus/test";
+import { afterEach, expect, test, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
 import {
   CustomUI,
   DisabledWithHostValue,
+  AuthenticatedPreview,
   RegistryUI,
+  SubmissionPaths,
   ValidationLimits,
 } from "../../src/stories/attachments.stories.tsx";
 
@@ -16,6 +18,7 @@ let container: HTMLElement | undefined;
 afterEach(() => {
   root?.unmount();
   container?.remove();
+  vi.restoreAllMocks();
 });
 
 function renderStory(node: ReactNode) {
@@ -137,6 +140,13 @@ test("removing an attachment excludes it from the submitted value", async () => 
   await userEvent.upload(pickerInput(), makeFile("keep.txt"));
   await userEvent.upload(pickerInput(), makeFile("drop.txt"));
   await expect.element(screen.getByText("drop.txt")).toBeVisible();
+  await expect
+    .poll(() =>
+      [...(container?.querySelectorAll<HTMLElement>("[data-status]") ?? [])].every(
+        (item) => item.dataset.status === "success"
+      )
+    )
+    .toBe(true);
 
   await screen.getByRole("button", { name: "Remove drop.txt" }).click();
   await expect.element(screen.getByText("drop.txt")).not.toBeInTheDocument();
@@ -163,6 +173,76 @@ test("validation rejections are announced and dismissable", async () => {
 
   await userEvent.upload(pickerInput(), makeFile("photo.png", 1024, "image/png"));
   await expect.element(screen.getByRole("listitem")).toHaveAttribute("data-status", "success");
+});
+
+test("aggregate validation applies to picker ingestion", async () => {
+  const screen = await renderEditableStory(<ValidationLimits />);
+
+  await userEvent.upload(pickerInput(), makeFile("first.png", 8 * 1024, "image/png"));
+  await userEvent.upload(pickerInput(), makeFile("second.png", 8 * 1024, "image/png"));
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent('Adding "second.png" would exceed the 15 KB draft limit.');
+});
+
+test("aggregate validation applies to dropped files", async () => {
+  const screen = await renderEditableStory(<ValidationLimits />);
+  const textbox = screen.getByRole("textbox");
+  await userEvent.upload(pickerInput(), makeFile("first.png", 8 * 1024, "image/png"));
+
+  const transfer = fileTransfer(makeFile("dropped.png", 8 * 1024, "image/png"));
+  textbox.element().dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent('Adding "dropped.png" would exceed the 15 KB draft limit.');
+});
+
+test("aggregate validation applies to pasted files", async () => {
+  const screen = await renderEditableStory(<ValidationLimits />);
+  const textbox = screen.getByRole("textbox");
+  await userEvent.upload(pickerInput(), makeFile("first.png", 8 * 1024, "image/png"));
+
+  textbox.element().dispatchEvent(
+    new ClipboardEvent("paste", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: fileTransfer(makeFile("pasted.png", 8 * 1024, "image/png")),
+    })
+  );
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent('Adding "pasted.png" would exceed the 15 KB draft limit.');
+});
+
+test("pending attachments block keyboard, imperative, and published submission", async () => {
+  const screen = await renderEditableStory(<SubmissionPaths />);
+  const textbox = screen.getByRole("textbox");
+  const submitted = screen.getByTestId("submitted");
+
+  await expect.element(textbox).toHaveAttribute("data-submit-blocked", "true");
+  await textbox.click();
+  await userEvent.keyboard("{Enter}");
+  await screen.getByRole("button", { name: "Imperative submit" }).click();
+  await screen.getByRole("button", { name: "Published submit" }).click();
+  await expect.element(submitted).toHaveTextContent("null");
+
+  await screen.getByRole("button", { name: "Remove pending.txt" }).click();
+  await expect.element(textbox).not.toHaveAttribute("data-submit-blocked");
+  await screen.getByRole("button", { name: "Published submit" }).click();
+  await expect.element(submitted).toHaveTextContent('"attachments":[]');
+});
+
+test("authenticated blob previews are revoked when their attachment is removed", async () => {
+  const revoke = vi.spyOn(URL, "revokeObjectURL");
+  const screen = await renderEditableStory(<AuthenticatedPreview />);
+
+  await expect.poll(() => container?.querySelector("img")?.src.startsWith("blob:")).toBe(true);
+  await screen.getByRole("button", { name: "Remove private.png" }).click();
+
+  expect(revoke).toHaveBeenCalledTimes(1);
 });
 
 test("custom UI drives the same contracts through its own input", async () => {

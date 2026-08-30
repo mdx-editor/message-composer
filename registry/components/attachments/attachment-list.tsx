@@ -51,31 +51,110 @@ function extensionOf(name: string): string {
   return name.slice(dot + 1, dot + 5);
 }
 
-function AttachmentThumb({ attachment }: { attachment: MessageComposerAttachment }) {
+export type MessageComposerAttachmentPreviewResult = string | Blob | null | undefined;
+
+export interface MessageComposerAttachmentPreviewContext {
+  signal: AbortSignal;
+}
+
+export type MessageComposerAttachmentPreviewResolver<TData = unknown> = (
+  attachment: MessageComposerAttachment<TData>,
+  context: MessageComposerAttachmentPreviewContext
+) => MessageComposerAttachmentPreviewResult | Promise<MessageComposerAttachmentPreviewResult>;
+
+export interface AttachmentListProps<TData = unknown> {
+  className?: string;
+  /** Fully replaces the default preview surface for each attachment. */
+  renderPreview?: (attachment: MessageComposerAttachment<TData>) => ReactNode;
+  /** Resolves authenticated remote previews. Local image files still render immediately. */
+  resolvePreview?: MessageComposerAttachmentPreviewResolver<TData>;
+}
+
+function AttachmentThumb<TData>({
+  attachment,
+  renderPreview,
+  resolvePreview,
+}: {
+  attachment: MessageComposerAttachment<TData>;
+  renderPreview?: AttachmentListProps<TData>["renderPreview"];
+  resolvePreview?: MessageComposerAttachmentPreviewResolver<TData>;
+}) {
   const isImage = attachment.mimeType.startsWith("image/");
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!attachment.file || !isImage) {
-      setObjectUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(attachment.file);
-    setObjectUrl(url);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [attachment.file, isImage]);
+  if (renderPreview) {
+    return renderPreview(attachment);
+  }
 
-  const src = objectUrl ?? (isImage ? attachment.url : undefined);
-  if (src) {
-    return <img src={src} alt="" className="size-full object-cover" />;
+  if (isImage && attachment.file) {
+    return <LocalImagePreview file={attachment.file} />;
+  }
+  if (isImage && resolvePreview) {
+    return <ResolvedImagePreview attachment={attachment} resolvePreview={resolvePreview} />;
+  }
+  if (isImage && attachment.url) {
+    return <img src={attachment.url} alt="" className="size-full object-cover" />;
   }
   return (
     <span className="flex size-full items-center justify-center bg-muted/50 text-[10px] font-medium uppercase text-muted-foreground">
       {extensionOf(attachment.name)}
     </span>
   );
+}
+
+function LocalImagePreview({ file }: { file: File }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setSrc(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  return src ? <img src={src} alt="" className="size-full object-cover" /> : null;
+}
+
+function ResolvedImagePreview<TData>({
+  attachment,
+  resolvePreview,
+}: {
+  attachment: MessageComposerAttachment<TData>;
+  resolvePreview: MessageComposerAttachmentPreviewResolver<TData>;
+}) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    setSrc(null);
+    void Promise.resolve(resolvePreview(attachment, { signal: controller.signal })).then(
+      (result) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (result instanceof Blob) {
+          objectUrl = URL.createObjectURL(result);
+          setSrc(objectUrl);
+        } else {
+          setSrc(result ?? null);
+        }
+      },
+      () => {
+        if (!controller.signal.aborted) {
+          setSrc(null);
+        }
+      }
+    );
+    return () => {
+      controller.abort();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [attachment, resolvePreview]);
+
+  return src ? <img src={src} alt="" className="size-full object-cover" /> : null;
 }
 
 function OverlayButton({
@@ -107,7 +186,15 @@ function OverlayButton({
   );
 }
 
-function AttachmentItem({ attachment }: { attachment: MessageComposerAttachment }) {
+function AttachmentItem<TData>({
+  attachment,
+  renderPreview,
+  resolvePreview,
+}: {
+  attachment: MessageComposerAttachment<TData>;
+  renderPreview?: AttachmentListProps<TData>["renderPreview"];
+  resolvePreview?: MessageComposerAttachmentPreviewResolver<TData>;
+}) {
   const disabled = useCellValue(disabled$);
   const remove = usePublisher(removeAttachment$);
   const retry = usePublisher(retryAttachmentUpload$);
@@ -124,7 +211,7 @@ function AttachmentItem({ attachment }: { attachment: MessageComposerAttachment 
       )}
     >
       <div className={cn("relative min-h-0 flex-1", uploading && "opacity-60")}>
-        <AttachmentThumb attachment={attachment} />
+        <AttachmentThumb attachment={attachment} renderPreview={renderPreview} resolvePreview={resolvePreview} />
         {uploading ? (
           <progress
             aria-label={`Uploading ${attachment.name}`}
@@ -166,7 +253,11 @@ function AttachmentItem({ attachment }: { attachment: MessageComposerAttachment 
   );
 }
 
-export function AttachmentList({ className }: { className?: string }) {
+export function AttachmentList<TData = unknown>({
+  className,
+  renderPreview,
+  resolvePreview,
+}: AttachmentListProps<TData>) {
   const [attachments, rejections] = useCellValues(attachments$, attachmentRejections$);
   const dismissRejections = usePublisher(dismissAttachmentRejections$);
 
@@ -179,7 +270,12 @@ export function AttachmentList({ className }: { className?: string }) {
       {attachments.length > 0 ? (
         <ul aria-label="Attachments" className="flex flex-wrap gap-2">
           {attachments.map((attachment) => (
-            <AttachmentItem key={attachment.id} attachment={attachment} />
+            <AttachmentItem
+              key={attachment.id}
+              attachment={attachment as MessageComposerAttachment<TData>}
+              renderPreview={renderPreview}
+              resolvePreview={resolvePreview}
+            />
           ))}
         </ul>
       ) : null}

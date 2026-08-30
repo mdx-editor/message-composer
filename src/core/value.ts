@@ -5,7 +5,7 @@ export interface MessageComposerAgentValue {
 
 export type MessageComposerAttachmentStatus = "pending" | "uploading" | "success" | "error";
 
-export interface MessageComposerAttachment {
+export interface MessageComposerAttachment<TData = unknown> {
   id: string;
   name: string;
   mimeType: string;
@@ -13,6 +13,8 @@ export interface MessageComposerAttachment {
   status: MessageComposerAttachmentStatus;
   /** Populated by the host upload handler on success. */
   url?: string;
+  /** Opaque host data populated by the upload handler or a host-authored value. */
+  data?: TData;
   /** Upload progress as a 0-1 fraction, when the host reports it. */
   progress?: number;
   error?: string;
@@ -40,9 +42,10 @@ export interface MessageComposerAudioClip {
 export interface MessageComposerValue<
   TAgent extends object = MessageComposerAgentValue,
   TExtensions extends object = Record<string, unknown>,
+  TAttachmentData = unknown,
 > {
   markdown: string;
-  attachments: MessageComposerAttachment[];
+  attachments: MessageComposerAttachment<TAttachmentData>[];
   mentions: MessageComposerMention[];
   audioClips: MessageComposerAudioClip[];
   agent?: TAgent;

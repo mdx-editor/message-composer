@@ -8,7 +8,7 @@ import { playwright } from "vite-plus/test/browser-playwright";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    include: ["@base-ui-components/react/popover", "@lexical/react/LexicalAutoLinkPlugin"],
+    include: ["@base-ui/react/popover", "@lexical/react/LexicalAutoLinkPlugin"],
   },
   resolve: {
     alias: [
@@ -122,8 +122,15 @@ export default defineConfig({
       "promise/valid-params": "error",
       "react/jsx-no-comment-textnodes": "error",
       "react/jsx-no-useless-fragment": "error",
+      // These compiler-oriented rules reject established engine-backed dynamic
+      // components and imperative test harnesses. Re-enable them only with a
+      // dedicated React Compiler adoption rather than as a tooling side effect.
+      "react/immutability": "off",
       "react/no-find-dom-node": "error",
+      "react/refs": "off",
       "react/self-closing-comp": "error",
+      "react/set-state-in-effect": "off",
+      "react/static-components": "off",
       "typescript/no-explicit-any": "error",
       "typescript/no-floating-promises": "error",
       "typescript/no-misused-promises": "error",

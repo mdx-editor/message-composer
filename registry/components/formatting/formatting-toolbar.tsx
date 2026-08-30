@@ -1,6 +1,6 @@
-import { Popover } from "@base-ui-components/react/popover";
-import { Toggle } from "@base-ui-components/react/toggle";
-import { Toolbar } from "@base-ui-components/react/toolbar";
+import { Popover } from "@base-ui/react/popover";
+import { Toggle } from "@base-ui/react/toggle";
+import { Toolbar } from "@base-ui/react/toolbar";
 import { lexicalEditor$, useCellValue, usePublisher } from "@mdxeditor/message-composer";
 import {
   beginLinkEdit$,
@@ -166,18 +166,50 @@ function FormatToggle({
   );
 }
 
-const TEXT_FORMATS: { format: MessageComposerTextFormat; label: string; icon: ReactNode }[] = [
-  { format: "bold", label: "Bold", icon: <BoldIcon /> },
-  { format: "italic", label: "Italic", icon: <ItalicIcon /> },
-  { format: "strikethrough", label: "Strikethrough", icon: <StrikethroughIcon /> },
-  { format: "code", label: "Inline code", icon: <CodeIcon /> },
+export type MessageComposerFormattingControl =
+  | "bold"
+  | "italic"
+  | "strikethrough"
+  | "inline-code"
+  | "link"
+  | "quote"
+  | "code-block"
+  | "bullet-list"
+  | "numbered-list";
+
+const TEXT_FORMATS: {
+  control: MessageComposerFormattingControl;
+  format: MessageComposerTextFormat;
+  label: string;
+  icon: ReactNode;
+}[] = [
+  { control: "bold", format: "bold", label: "Bold", icon: <BoldIcon /> },
+  { control: "italic", format: "italic", label: "Italic", icon: <ItalicIcon /> },
+  {
+    control: "strikethrough",
+    format: "strikethrough",
+    label: "Strikethrough",
+    icon: <StrikethroughIcon />,
+  },
+  { control: "inline-code", format: "code", label: "Inline code", icon: <CodeIcon /> },
 ];
 
-const BLOCK_TYPES: { blockType: Exclude<MessageComposerBlockType, "paragraph">; label: string; icon: ReactNode }[] = [
-  { blockType: "quote", label: "Quote", icon: <QuoteIcon /> },
-  { blockType: "code", label: "Code block", icon: <CodeBlockIcon /> },
-  { blockType: "ul", label: "Bullet list", icon: <BulletListIcon /> },
-  { blockType: "ol", label: "Numbered list", icon: <NumberedListIcon /> },
+const BLOCK_TYPES: {
+  control: MessageComposerFormattingControl;
+  blockType: Exclude<MessageComposerBlockType, "paragraph">;
+  label: string;
+  icon: ReactNode;
+}[] = [
+  { control: "quote", blockType: "quote", label: "Quote", icon: <QuoteIcon /> },
+  { control: "code-block", blockType: "code", label: "Code block", icon: <CodeBlockIcon /> },
+  { control: "bullet-list", blockType: "ul", label: "Bullet list", icon: <BulletListIcon /> },
+  { control: "numbered-list", blockType: "ol", label: "Numbered list", icon: <NumberedListIcon /> },
+];
+
+const ALL_CONTROLS: readonly MessageComposerFormattingControl[] = [
+  ...TEXT_FORMATS.map(({ control }) => control),
+  "link",
+  ...BLOCK_TYPES.map(({ control }) => control),
 ];
 
 function LinkControl() {
@@ -323,10 +355,21 @@ function LinkControl() {
   );
 }
 
-export function FormattingToolbar({ className }: { className?: string }) {
+export interface FormattingToolbarProps {
+  className?: string;
+  /** Selects visible controls in the toolbar's canonical keyboard order. */
+  visibleControls?: readonly MessageComposerFormattingControl[];
+}
+
+export function FormattingToolbar({ className, visibleControls = ALL_CONTROLS }: FormattingToolbarProps) {
   const state = useCellValue(formattingState$);
   const format = usePublisher(formatText$);
   const block = usePublisher(toggleBlock$);
+  const visible = new Set(visibleControls);
+  const textFormats = TEXT_FORMATS.filter(({ control }) => visible.has(control));
+  const blockTypes = BLOCK_TYPES.filter(({ control }) => visible.has(control));
+  const showLink = visible.has("link");
+  const showSeparator = (textFormats.length > 0 || showLink) && blockTypes.length > 0;
 
   return (
     <Toolbar.Root
@@ -336,14 +379,14 @@ export function FormattingToolbar({ className }: { className?: string }) {
       onMouseDown={(event) => event.preventDefault()}
       className={cn("flex items-center gap-0.5 border-b border-input px-1.5 py-1", className)}
     >
-      {TEXT_FORMATS.map(({ format: textFormat, label, icon }) => (
+      {textFormats.map(({ format: textFormat, label, icon }) => (
         <FormatToggle key={textFormat} label={label} pressed={state[textFormat]} onToggle={() => format(textFormat)}>
           {icon}
         </FormatToggle>
       ))}
-      <LinkControl />
-      <Toolbar.Separator className="mx-1 h-5 w-px bg-border" />
-      {BLOCK_TYPES.map(({ blockType, label, icon }) => (
+      {showLink ? <LinkControl /> : null}
+      {showSeparator ? <Toolbar.Separator className="mx-1 h-5 w-px bg-border" /> : null}
+      {blockTypes.map(({ blockType, label, icon }) => (
         <FormatToggle
           key={blockType}
           label={label}

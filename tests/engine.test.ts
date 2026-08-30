@@ -3,12 +3,15 @@ import { expect, test, vi } from "vite-plus/test";
 
 import {
   controlled$,
+  clearSubmitBlocker$,
   disabled$,
   draftValue$,
   markdown$,
   reset$,
+  setSubmitBlocker$,
   setMarkdown$,
   submit$,
+  submitBlockers$,
   submitError$,
   submitHandler$,
   submitting$,
@@ -181,6 +184,29 @@ test("submit is ignored while pending and when disabled", () => {
   other.pub(submitHandler$, otherHandler);
   other.pub(submit$);
   expect(otherHandler).not.toHaveBeenCalled();
+});
+
+test("submit blockers compose by id and gate the shared submit pipeline", () => {
+  const engine = new Engine();
+  const handler = vi.fn<() => void>();
+  engine.pub(submitHandler$, handler);
+
+  engine.pub(setSubmitBlocker$, { id: "attachments", message: "Attachments are not ready." });
+  engine.pub(setSubmitBlocker$, { id: "policy", message: "Approval is required." });
+  engine.pub(setSubmitBlocker$, { id: "attachments", message: "Remove the failed attachment." });
+
+  expect(engine.getValue(submitBlockers$)).toEqual([
+    { id: "attachments", message: "Remove the failed attachment." },
+    { id: "policy", message: "Approval is required." },
+  ]);
+  engine.pub(submit$);
+  expect(handler).not.toHaveBeenCalled();
+
+  engine.pub(clearSubmitBlocker$, "attachments");
+  engine.pub(clearSubmitBlocker$, "policy");
+  expect(engine.getValue(submitBlockers$)).toEqual([]);
+  engine.pub(submit$);
+  expect(handler).toHaveBeenCalledTimes(1);
 });
 
 test("uncontrolled reset: clears the draft, emits valueChange, clears error", () => {

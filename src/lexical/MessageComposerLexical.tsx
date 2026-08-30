@@ -20,6 +20,7 @@ import {
   markdown$,
   reset$,
   submit$,
+  submitBlockers$,
   submitError$,
   submitting$,
 } from "../core/nodes.ts";
@@ -117,7 +118,12 @@ function EditorSurface({
   slots?: MessageComposerSlots;
 }) {
   const [editor] = useLexicalComposerContext();
-  const [disabled, submitting, submitError] = useCellValues(disabled$, submitting$, submitError$);
+  const [disabled, submitting, submitError, submitBlockers] = useCellValues(
+    disabled$,
+    submitting$,
+    submitError$,
+    submitBlockers$
+  );
   const publishReset = usePublisher(reset$);
   const publishSubmit = usePublisher(submit$);
 
@@ -143,6 +149,7 @@ function EditorSurface({
   const stateAttributes = {
     "data-submitting": submitting || undefined,
     "data-submit-error": submitError === null ? undefined : true,
+    "data-submit-blocked": submitBlockers.length > 0 || undefined,
     "data-disabled": disabled || undefined,
   };
 

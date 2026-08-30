@@ -28,6 +28,10 @@ First-party UI:
 npx shadcn@latest add mdx-editor/message-composer/formatting-toolbar
 ```
 
+The copied `FormattingToolbar` accepts `visibleControls` to select a compact subset while retaining
+the canonical roving-focus order. Available IDs are `bold`, `italic`, `strikethrough`,
+`inline-code`, `link`, `quote`, `code-block`, `bullet-list`, and `numbered-list`.
+
 Fallback direct JSON:
 
 ```sh

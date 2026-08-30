@@ -6,9 +6,10 @@
 interface MessageComposerValue<
   TAgent extends object = MessageComposerAgentValue,
   TExtensions extends object = Record<string, unknown>,
+  TAttachmentData = unknown,
 > {
   markdown: string;
-  attachments: MessageComposerAttachment[];
+  attachments: MessageComposerAttachment<TAttachmentData>[];
   mentions: MessageComposerMention[];
   audioClips: MessageComposerAudioClip[];
   agent?: TAgent;
@@ -50,6 +51,10 @@ Pass `defaultValue` or no value to let the composer own its draft.
 `onSubmit` receives the current draft value. Submit does not clear the draft.
 
 If `onSubmit` returns a promise, the composer tracks submitting/error lifecycle state and leaves the draft intact on rejection.
+
+Plugins can contribute submit blockers through `setSubmitBlocker$` and `clearSubmitBlocker$`. Read
+`submitBlockers$` to disable custom submit UI and show the blocker messages. Keyboard, imperative,
+and published submission all use the same blocker-aware pipeline.
 
 ## Sidecar Preservation
 

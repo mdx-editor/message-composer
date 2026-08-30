@@ -15,9 +15,17 @@ Use Vite+ as the primary command surface.
 
 ## pnpm
 
-The repo is pinned to `pnpm@11.6.0`.
+The repo is pinned to `pnpm@11.24.0`.
 
-pnpm 11's supply-chain policy rejected a same-day `@typescript/native-preview` build, so the package is pinned to `7.0.0-dev.20260509.2`.
+Declaration packing uses Vite Plus's `tsgo` path, so the repository keeps an explicit
+`@typescript/native-preview` version that is old enough to pass pnpm's supply-chain policy.
+
+`@types/node` stays on the latest Node 24 line because local and CI execution use Node 24. The npm
+registry's newer Node 26 types are intentionally not used until the runtime baseline changes.
+
+The current `@ladle/react@5.1.1` tree reports upstream peer-range warnings: `react-inspector@6.0.2`
+does not declare React 19, and `tsconfck@3.1.6` does not declare TypeScript 7. Ladle's production
+build passes with both versions. Remove these exceptions when Ladle updates its transitive ranges.
 
 ## Local Preview
 

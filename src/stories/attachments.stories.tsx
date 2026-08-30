@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AttachmentList } from "../../registry/components/attachments/attachment-list.tsx";
 import { AttachmentPickerButton } from "../../registry/components/attachments/attachment-picker-button.tsx";
 import { MessageComposer as RegistryMessageComposer } from "../../registry/components/message-composer/message-composer.tsx";
 import {
   MessageComposer as CoreMessageComposer,
+  submit$,
   useCellValues,
+  useEngineRef,
   usePublisher,
+  type MessageComposerHandle,
   type MessageComposerValue,
 } from "../index.ts";
 import {
@@ -107,6 +110,7 @@ const validationPlugins = [
     upload: createStoryUpload(),
     accept: "image/*,.pdf",
     maxFileSize: 10 * 1024,
+    maxTotalFileSize: 15 * 1024,
     maxCount: 2,
   }),
 ];
@@ -116,7 +120,9 @@ export const ValidationLimits = () => {
 
   return (
     <div style={layoutStyle}>
-      <p style={{ margin: 0, fontSize: 13 }}>Accepts images and PDFs up to 10 KB, at most 2 attachments.</p>
+      <p style={{ margin: 0, fontSize: 13 }}>
+        Accepts images and PDFs up to 10 KB each and 15 KB total, at most 2 attachments.
+      </p>
       <RegistryMessageComposer
         plugins={validationPlugins}
         slots={registrySlots}
@@ -232,4 +238,89 @@ export const DisabledWithHostValue = () => (
       editorProps={{ "aria-label": "Message" }}
     />
   </div>
+);
+
+const pendingValue: MessageComposerValue = {
+  ...hostAuthoredValue,
+  markdown: "Blocked until the attachment is removed.",
+  attachments: [
+    {
+      id: "pending-1",
+      name: "pending.txt",
+      mimeType: "text/plain",
+      size: 64,
+      status: "pending",
+    },
+  ],
+};
+
+export const SubmissionPaths = () => {
+  const handle = useRef<MessageComposerHandle>(null);
+  const engineRef = useEngineRef();
+  const [submitted, setSubmitted] = useState<MessageComposerValue | null>(null);
+
+  return (
+    <div style={layoutStyle}>
+      <RegistryMessageComposer
+        ref={handle}
+        engineRef={engineRef}
+        plugins={disabledPlugins}
+        defaultValue={pendingValue}
+        slots={registrySlots}
+        editorProps={{ "aria-label": "Message" }}
+        onSubmit={setSubmitted}
+      />
+      <div>
+        <button type="button" onClick={() => handle.current?.submit()}>
+          Imperative submit
+        </button>
+        <button type="button" onClick={() => engineRef.current?.pub(submit$)}>
+          Published submit
+        </button>
+      </div>
+      <pre data-testid="submitted" style={inspectorStyle}>
+        {JSON.stringify(submitted)}
+      </pre>
+    </div>
+  );
+};
+
+const authenticatedValue: MessageComposerValue<
+  Record<string, never>,
+  Record<string, unknown>,
+  { attachmentId: string }
+> = {
+  markdown: "Authenticated image preview.",
+  attachments: [
+    {
+      id: "authenticated-1",
+      name: "private.png",
+      mimeType: "image/png",
+      size: 64,
+      status: "success",
+      data: { attachmentId: "host-private-1" },
+    },
+  ],
+  mentions: [],
+  audioClips: [],
+};
+
+const AuthenticatedAttachmentHeader = () => (
+  <AttachmentList<{ attachmentId: string }>
+    resolvePreview={(attachment) => {
+      if (attachment.data?.attachmentId !== "host-private-1") {
+        return null;
+      }
+      return new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
+    }}
+  />
+);
+
+export const AuthenticatedPreview = () => (
+  <RegistryMessageComposer
+    plugins={disabledPlugins}
+    defaultValue={authenticatedValue}
+    slots={{ header: AuthenticatedAttachmentHeader }}
+    editorProps={{ "aria-label": "Message" }}
+  />
 );

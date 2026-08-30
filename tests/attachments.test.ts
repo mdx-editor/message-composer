@@ -1,10 +1,20 @@
 import { Engine } from "@virtuoso.dev/reactive-engine-core";
 import { expect, test, vi } from "vite-plus/test";
 
-import { controlled$, disabled$, draftValue$, submit$, submitHandler$, valueChange$ } from "../src/core/nodes.ts";
+import {
+  controlled$,
+  disabled$,
+  draftValue$,
+  reset$,
+  submit$,
+  submitBlockers$,
+  submitHandler$,
+  valueChange$,
+} from "../src/core/nodes.ts";
 import { createEmptyMessageComposerValue, type MessageComposerValue } from "../src/core/value.ts";
 import {
   addAttachmentFiles$,
+  attachmentRemoved$,
   attachmentRejections$,
   attachments$,
   attachmentsPlugin,
@@ -26,7 +36,7 @@ interface UploadCall {
   attachment: MessageComposerAttachment;
   signal: AbortSignal;
   onProgress: (progress: number) => void;
-  resolve: (result: { url: string }) => void;
+  resolve: (result: { url: string; data?: unknown }) => void;
   reject: (error: unknown) => void;
 }
 
@@ -113,6 +123,32 @@ test("upload resolution marks the attachment success with the url", async () => 
   expect(attachment.status).toBe("success");
   expect(attachment.url).toBe("https://files.example/a.txt");
   expect(attachment.progress).toBeUndefined();
+});
+
+test("upload success and retry preserve the latest opaque host data", async () => {
+  const { engine, calls } = setup();
+  engine.pub(addAttachmentFiles$, [makeFile("a.txt")]);
+
+  calls[0].resolve({ url: "https://files.example/first", data: { attachmentId: "host-1" } });
+  await settlePromises();
+  expect(engine.getValue(attachments$)[0]).toMatchObject({
+    url: "https://files.example/first",
+    data: { attachmentId: "host-1" },
+  });
+
+  engine.pub(draftValue$, {
+    ...engine.getValue(draftValue$),
+    attachments: [{ ...engine.getValue(attachments$)[0], status: "error", error: "expired" }],
+  });
+  engine.pub(retryAttachmentUpload$, engine.getValue(attachments$)[0].id);
+  calls[1].resolve({ url: "https://files.example/second", data: { attachmentId: "host-2" } });
+  await settlePromises();
+
+  expect(engine.getValue(attachments$)[0]).toMatchObject({
+    status: "success",
+    url: "https://files.example/second",
+    data: { attachmentId: "host-2" },
+  });
 });
 
 test("upload rejection marks the attachment error with the message", async () => {
@@ -211,6 +247,22 @@ test("remove aborts the in-flight upload and a late settlement does not resurrec
   expect(engine.getValue(attachments$).map((attachment) => attachment.name)).toEqual(["b.txt"]);
 });
 
+test("accepted explicit removal emits one complete snapshot after aborting", () => {
+  const { engine, calls } = setup();
+  const removals: unknown[] = [];
+  engine.sub(attachmentRemoved$, (event) => {
+    expect(calls[0].signal.aborted).toBe(true);
+    removals.push(event);
+  });
+  engine.pub(addAttachmentFiles$, [makeFile("a.txt", 32)]);
+  const attachment = engine.getValue(attachments$)[0];
+
+  engine.pub(removeAttachment$, attachment.id);
+  engine.pub(removeAttachment$, attachment.id);
+
+  expect(removals).toEqual([{ attachment, reason: "explicit-removal" }]);
+});
+
 test("validation rejects by size, accept, count, and custom rule with codes", () => {
   const { engine, calls } = setup({
     accept: "image/*,.pdf",
@@ -246,6 +298,47 @@ test("maxCount counts existing draft attachments across batches", () => {
 
   expect(engine.getValue(attachments$).map((attachment) => attachment.name)).toEqual(["a.txt", "b.txt"]);
   expect(engine.getValue(attachmentRejections$).map((rejection) => rejection.code)).toEqual(["too-many-files"]);
+});
+
+test("aggregate validation counts existing and earlier accepted bytes, then reflects removal", () => {
+  const { engine, calls } = setup({ maxTotalFileSize: 100 });
+
+  engine.pub(addAttachmentFiles$, [makeFile("first.txt", 60), makeFile("too-much.txt", 50)]);
+  expect(engine.getValue(attachments$).map((attachment) => attachment.name)).toEqual(["first.txt"]);
+  expect(engine.getValue(attachmentRejections$)[0]).toMatchObject({
+    code: "total-file-size-exceeded",
+  });
+  expect(calls).toHaveLength(1);
+
+  engine.pub(removeAttachment$, engine.getValue(attachments$)[0].id);
+  engine.pub(addAttachmentFiles$, [makeFile("after-removal.txt", 50)]);
+  expect(engine.getValue(attachments$).map((attachment) => attachment.name)).toEqual(["after-removal.txt"]);
+  expect(calls).toHaveLength(2);
+});
+
+test("custom validation receives an immutable draft and accepted-batch context", () => {
+  const contexts: unknown[] = [];
+  const { engine } = setup({
+    validate: (_file, context) => {
+      contexts.push(context);
+      return null;
+    },
+  });
+
+  engine.pub(addAttachmentFiles$, [makeFile("first.txt", 20), makeFile("second.txt", 30)]);
+
+  expect(contexts).toHaveLength(2);
+  const second = contexts[1] as {
+    draft: { attachments: readonly unknown[] };
+    acceptedFiles: readonly File[];
+    totalFileSize: number;
+  };
+  expect(second.acceptedFiles.map((file) => file.name)).toEqual(["first.txt"]);
+  expect(second.totalFileSize).toBe(20);
+  expect(Object.isFrozen(second)).toBe(true);
+  expect(Object.isFrozen(second.draft)).toBe(true);
+  expect(Object.isFrozen(second.draft.attachments)).toBe(true);
+  expect(Object.isFrozen(second.acceptedFiles)).toBe(true);
 });
 
 test("a later valid ingestion clears stale rejections, and dismiss clears them explicitly", () => {
@@ -333,6 +426,62 @@ test("cleanup aborts in-flight uploads and a late settlement does not publish", 
   expect(engine.getValue(attachments$)[0].status).toBe("uploading");
 });
 
+test("reset and controlled reconciliation abort silently and discard late settlement", async () => {
+  const uncontrolled = setup();
+  const uncontrolledRemovals = vi.fn<(event: unknown) => void>();
+  uncontrolled.engine.sub(attachmentRemoved$, uncontrolledRemovals);
+  uncontrolled.engine.pub(addAttachmentFiles$, [makeFile("reset.txt")]);
+  uncontrolled.engine.pub(reset$);
+  expect(uncontrolled.calls[0].signal.aborted).toBe(true);
+  expect(uncontrolledRemovals).not.toHaveBeenCalled();
+
+  const engine = new Engine({ [controlled$]: true });
+  const controlled = setup({}, engine);
+  const controlledRemovals = vi.fn<(event: unknown) => void>();
+  engine.sub(attachmentRemoved$, controlledRemovals);
+  engine.sub(valueChange$, (value) => engine.pub(draftValue$, value));
+  engine.pub(addAttachmentFiles$, [makeFile("replaced.txt")]);
+  const replacement = createEmptyMessageComposerValue();
+  engine.pub(draftValue$, replacement);
+  expect(controlled.calls[0].signal.aborted).toBe(true);
+
+  controlled.calls[0].resolve({ url: "https://files.example/late" });
+  await settlePromises();
+  expect(engine.getValue(draftValue$)).toBe(replacement);
+  expect(controlledRemovals).not.toHaveBeenCalled();
+});
+
+test("attachments block submit until success or removal", async () => {
+  const { engine, calls } = setup();
+  const received = vi.fn<(value: MessageComposerValue) => void>();
+  engine.pub(submitHandler$, received);
+
+  engine.pub(addAttachmentFiles$, [makeFile("a.txt")]);
+  expect(engine.getValue(submitBlockers$)).toHaveLength(1);
+  engine.pub(submit$);
+  expect(received).not.toHaveBeenCalled();
+
+  calls[0].reject(new Error("failed"));
+  await settlePromises();
+  engine.pub(submit$);
+  expect(received).not.toHaveBeenCalled();
+
+  engine.pub(retryAttachmentUpload$, engine.getValue(attachments$)[0].id);
+  calls[1].resolve({ url: "https://files.example/a.txt" });
+  await settlePromises();
+  expect(engine.getValue(submitBlockers$)).toEqual([]);
+  engine.pub(submit$);
+  expect(received).toHaveBeenCalledTimes(1);
+
+  engine.pub(draftValue$, {
+    ...engine.getValue(draftValue$),
+    attachments: [{ ...engine.getValue(attachments$)[0], status: "pending" }],
+  });
+  engine.pub(removeAttachment$, engine.getValue(attachments$)[0].id);
+  engine.pub(submit$);
+  expect(received).toHaveBeenCalledTimes(2);
+});
+
 test("submitted value carries the attachments", async () => {
   const { engine, calls } = setup();
   const received = vi.fn<(value: MessageComposerValue) => void>();
@@ -341,6 +490,8 @@ test("submitted value carries the attachments", async () => {
   engine.pub(addAttachmentFiles$, [makeFile("a.txt", 32)]);
   calls[0].resolve({ url: "https://files.example/a.txt" });
   await settlePromises();
+
+  expect(engine.getValue(submitBlockers$)).toEqual([]);
 
   engine.pub(submit$);
 
