@@ -39,6 +39,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL("src/plugins/slash-commands/index.tsx", import.meta.url)),
       },
       {
+        find: "@mdxeditor/message-composer/plugins/pasted-text",
+        replacement: fileURLToPath(new URL("src/plugins/pasted-text/index.ts", import.meta.url)),
+      },
+      {
         find: "@mdxeditor/message-composer",
         replacement: fileURLToPath(new URL("src/index.ts", import.meta.url)),
       },
@@ -160,6 +164,7 @@ export default defineConfig({
     entry: {
       index: "src/index.ts",
       "plugins/agent-settings": "src/plugins/agent-settings/index.ts",
+      "plugins/pasted-text": "src/plugins/pasted-text/index.ts",
       "plugins/attachments": "src/plugins/attachments/index.ts",
       "plugins/formatting": "src/plugins/formatting/index.tsx",
       "plugins/mentions": "src/plugins/mentions/index.ts",

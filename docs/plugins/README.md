@@ -8,6 +8,7 @@ Available plugin subpaths:
 - [`@mdxeditor/message-composer/plugins/agent-settings`](./agent-settings.md)
 - [`@mdxeditor/message-composer/plugins/mentions`](./mentions.md)
 - [`@mdxeditor/message-composer/plugins/attachments`](./attachments.md)
+- [`@mdxeditor/message-composer/plugins/pasted-text`](./pasted-text.md)
 - [`@mdxeditor/message-composer/plugins/slash-commands`](./slash-commands.md)
 
 Link editing and auto-linking currently live in the formatting plugin. Audio capture and emoji picker are deferred to v1.1.

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../../registry";
+@source "./pasted-text.fixtures.tsx";
 
 /* shadcn theme tokens (zinc), Tailwind v4 style. Registry components are
    authored against these tokens so they inherit the host app's theme when
