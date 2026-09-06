@@ -135,9 +135,26 @@
         "mdx-editor/message-composer/model-effort-picker",
         "mdx-editor/message-composer/attachments-ui",
         "mdx-editor/message-composer/mentions-ui",
-        "mdx-editor/message-composer/slash-command-shelf"
+        "mdx-editor/message-composer/slash-command-shelf",
+        "mdx-editor/message-composer/pasted-text-ui"
       ],
       "categories": ["message-composer", "preset"]
+    },
+    {
+      "name": "pasted-text-ui",
+      "type": "registry:component",
+      "title": "Pasted Text",
+      "description": "Expandable pasted-text pills with exact source preview, copy, edit, and remove controls.",
+      "registryDependencies": ["mdx-editor/message-composer/message-composer-utils"],
+      "dependencies": ["@base-ui/react@1.7.0", "@mdxeditor/message-composer"],
+      "files": [
+        {
+          "path": "registry/components/pasted-text/pasted-text-list.tsx",
+          "type": "registry:component",
+          "target": "@components/message-composer/pasted-text-list.tsx"
+        }
+      ],
+      "categories": ["message-composer", "pasted-text"]
     }
   ]
 }

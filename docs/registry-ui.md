@@ -19,6 +19,7 @@ Install individual items:
 | Formatting toolbar  | `npx shadcn@latest add mdx-editor/message-composer/formatting-toolbar`  |
 | Model/effort picker | `npx shadcn@latest add mdx-editor/message-composer/model-effort-picker` |
 | Attachments UI      | `npx shadcn@latest add mdx-editor/message-composer/attachments-ui`      |
+| Pasted text UI      | `npx shadcn@latest add mdx-editor/message-composer/pasted-text-ui`      |
 | Mentions UI         | `npx shadcn@latest add mdx-editor/message-composer/mentions-ui`         |
 | Slash command shelf | `npx shadcn@latest add mdx-editor/message-composer/slash-command-shelf` |
 

@@ -37,6 +37,7 @@ Interactive Ladle demos are published at:
 - [Concepts](./concepts.md)
 - [Value and submit semantics](./value-and-submit-semantics.md)
 - [Plugins](./plugins/README.md)
+- [Pasted text](./plugins/pasted-text.md): preserve large pasted documents as expandable text items.
 - [First-party registry UI](./registry-ui.md)
 - [Testing and stories](./testing-and-stories.md)
 
