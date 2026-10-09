@@ -66,6 +66,24 @@ test("pointer selection inserts the clicked mention", async () => {
   await expect.element(page.getByRole("button", { name: "Grace Hopper" })).not.toBeInTheDocument();
 });
 
+test("a disabled mention shows its reason and cannot be inserted", async () => {
+  const screen = renderStory(<RegistryUI />);
+  const textbox = screen.getByRole("textbox");
+
+  await textbox.click();
+  await userEvent.keyboard("@annie");
+  const option = page.getByRole("button", { name: /Annie Easley/ });
+  await expect.element(option).toHaveAttribute("aria-disabled", "true");
+  await expect.element(option).toHaveTextContent("Not a member of this channel");
+
+  await option.click({ force: true });
+  await userEvent.keyboard("{Enter}");
+
+  await expect.element(option).toBeVisible();
+  await expect.element(textbox).toHaveTextContent("@annie");
+  await expect.element(screen.getByTestId("submitted")).toHaveTextContent("null");
+});
+
 test("backspace deletes the mention as a unit", async () => {
   const screen = renderStory(<RegistryUI />);
   const textbox = screen.getByRole("textbox");

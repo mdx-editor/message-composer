@@ -53,6 +53,15 @@ export interface MessageComposerMentionOption {
   id: string;
   label: string;
   data?: unknown;
+  /** Listed in the menu but never inserted; keyboard navigation skips it. */
+  disabled?: boolean;
+  /** Secondary menu text, for example why the option is disabled. */
+  description?: string;
+}
+
+function firstEnabledIndex(results: MessageComposerMentionOption[]) {
+  const index = results.findIndex((option) => !option.disabled);
+  return index === -1 ? 0 : index;
 }
 
 export interface MessageComposerMentionProvider {
@@ -123,14 +132,14 @@ export const mentionResults$ = Cell<MessageComposerMentionOption[]>([]);
 export const mentionLoading$ = Cell(false);
 export const mentionError$ = Cell<unknown>(null);
 
-/** Highlighted result index; publishable directly (e.g. on pointer hover). */
+/** Highlighted result index; publishable directly (e.g. on pointer hover). Starts on the first enabled result. */
 export const mentionHighlight$ = Cell(0);
 
 // Commands are events, not state: distinct stays off so repeats are delivered.
-/** Moves the highlight up (-1) or down (1), wrapping around the results. */
+/** Moves the highlight up (-1) or down (1) to the next enabled result, wrapping around the results. */
 export const moveMentionHighlight$ = Stream<1 | -1>(false);
 
-/** Replaces the trigger + query text with a mention node for the given option. */
+/** Replaces the trigger + query text with a mention node for the given option; ignores disabled options. */
 export const insertMention$ = Stream<MessageComposerMentionOption>(false);
 
 /** Inserts the currently highlighted result. */
@@ -304,7 +313,11 @@ function runSearchLifecycle(engine: Engine, providers: MessageComposerMentionPro
           return;
         }
         controller = null;
-        engine.pubIn({ [mentionResults$]: results, [mentionLoading$]: false, [mentionHighlight$]: 0 });
+        engine.pubIn({
+          [mentionResults$]: results,
+          [mentionLoading$]: false,
+          [mentionHighlight$]: firstEnabledIndex(results),
+        });
       },
       (error: unknown) => {
         if (current.signal.aborted || engine.isDisposed) {
@@ -323,11 +336,16 @@ function runSearchLifecycle(engine: Engine, providers: MessageComposerMentionPro
 }
 
 e.sub(moveMentionHighlight$, (delta, engine) => {
-  const count = engine.getValue(mentionResults$).length;
-  if (count === 0) {
-    return;
+  const results = engine.getValue(mentionResults$);
+  const count = results.length;
+  let index = engine.getValue(mentionHighlight$);
+  for (let step = 0; step < count; step++) {
+    index = (index + delta + count) % count;
+    if (!results[index]?.disabled) {
+      engine.pub(mentionHighlight$, index);
+      return;
+    }
   }
-  engine.pub(mentionHighlight$, (engine.getValue(mentionHighlight$) + delta + count) % count);
 });
 
 e.sub(confirmMention$, (_, engine) => {
@@ -340,7 +358,7 @@ e.sub(confirmMention$, (_, engine) => {
 e.sub(insertMention$, (option, engine) => {
   const editor = engine.getValue(lexicalEditor$);
   const state = engine.getValue(mentionMenu$);
-  if (!editor || !state) {
+  if (!editor || !state || option.disabled) {
     return;
   }
   editor.update(

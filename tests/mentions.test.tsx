@@ -244,6 +244,47 @@ test("the highlight wraps around the result list", async () => {
   expect(engine.getValue(mentionHighlight$)).toBe(0);
 });
 
+const GRACE: MessageComposerMentionOption = { id: "u3", label: "Grace" };
+const ANNIE: MessageComposerMentionOption = { id: "u4", label: "Annie", disabled: true };
+const ALONZO: MessageComposerMentionOption = { id: "u5", label: "Alonzo", disabled: true };
+
+test("the highlight starts on and moves between enabled results", async () => {
+  const { provider, calls } = deferredProvider();
+  const { engine, editor } = setup({ plugins: [mentionsPlugin({ providers: [provider] })] });
+
+  typeText(editor, "@a");
+  await resolveSearch(calls.at(-1)!, [ANNIE, ALAN, ALONZO, GRACE]);
+  expect(engine.getValue(mentionHighlight$)).toBe(1);
+
+  await publish(engine, moveMentionHighlight$, 1);
+  expect(engine.getValue(mentionHighlight$)).toBe(3);
+  await publish(engine, moveMentionHighlight$, 1);
+  expect(engine.getValue(mentionHighlight$)).toBe(1);
+  await publish(engine, moveMentionHighlight$, -1);
+  expect(engine.getValue(mentionHighlight$)).toBe(3);
+});
+
+test("a disabled option is never inserted", async () => {
+  const { provider, calls } = deferredProvider();
+  const changes: MessageComposerValue[] = [];
+  const { engine, editor } = setup({
+    plugins: [mentionsPlugin({ providers: [provider] })],
+    onValueChange: (value) => changes.push(value),
+  });
+
+  typeText(editor, "@a");
+  await resolveSearch(calls.at(-1)!, [ANNIE, ALONZO]);
+  await publish(engine, moveMentionHighlight$, 1);
+  expect(engine.getValue(mentionHighlight$)).toBe(0);
+
+  await publish(engine, confirmMention$, undefined);
+  await publish(engine, insertMention$, ALONZO);
+
+  expect(engine.getValue(mentionMenu$)).not.toBeNull();
+  expect(changes.at(-1)?.markdown).toBe("@a");
+  expect(changes.at(-1)?.mentions).toEqual([]);
+});
+
 test("enter with an open menu inserts instead of submitting", async () => {
   const { provider, calls } = deferredProvider();
   const submitted: MessageComposerValue[] = [];
