@@ -3,6 +3,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
+import { SlashCommandHeader } from "../../registry/components/slash-commands/command-shelf.tsx";
+import { MessageComposer } from "../../src/index.ts";
+import { slashCommandsPlugin } from "../../src/plugins/slash-commands/index.tsx";
 import { CustomUI, RegistryUI } from "../../src/stories/slash-commands.stories.tsx";
 
 let root: Root | undefined;
@@ -125,4 +128,20 @@ test("custom UI drives the same slash command and chip contracts", async () => {
 
   await userEvent.keyboard("{Enter}");
   await expect.element(screen.getByTestId("submitted")).toHaveTextContent('"toolId":"web-search"');
+});
+
+test("the shelf shows loading while a command search is pending", async () => {
+  const plugins = [
+    slashCommandsPlugin({
+      providers: [{ search: () => new Promise<never>(() => {}) }],
+      shelf: SlashCommandHeader,
+    }),
+  ];
+  const screen = renderStory(<MessageComposer plugins={plugins} />);
+
+  await screen.getByRole("textbox").click();
+  await userEvent.keyboard("/");
+
+  await expect.element(screen.getByText("Loading commands…")).toBeVisible();
+  await expect.element(screen.getByText("No commands")).not.toBeInTheDocument();
 });
