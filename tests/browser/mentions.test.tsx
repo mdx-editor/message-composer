@@ -3,6 +3,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
+import { MentionMenu } from "../../registry/components/mentions/mention-menu.tsx";
+import { MessageComposer } from "../../src/index.ts";
+import { mentionsPlugin } from "../../src/plugins/mentions/index.ts";
 import { CustomUI, RegistryUI } from "../../src/stories/mentions.stories.tsx";
 
 let root: Root | undefined;
@@ -136,4 +139,20 @@ test("custom UI rehydrates mention markdown and drives the same contracts", asyn
   const submitted = screen.getByTestId("submitted");
   await expect.element(submitted).toHaveTextContent('"mentions":[{"id":"u1","trigger":"@","label":"Ada Lovelace"}');
   await expect.element(submitted).toHaveTextContent('{"id":"u2","trigger":"@","label":"Alan Turing"}]');
+});
+
+test("the menu shows searching while a mention search is pending", async () => {
+  const plugins = [
+    mentionsPlugin({
+      providers: [{ trigger: "@", search: () => new Promise<never>(() => {}) }],
+      menu: MentionMenu,
+    }),
+  ];
+  const screen = renderStory(<MessageComposer plugins={plugins} />);
+
+  await screen.getByRole("textbox").click();
+  await userEvent.keyboard("@a");
+
+  await expect.element(page.getByText("Searching…")).toBeVisible();
+  await expect.element(page.getByText("No matches")).not.toBeInTheDocument();
 });
