@@ -45,6 +45,7 @@ const PEOPLE: MessageComposerMentionOption[] = [
   { id: "u1", label: "Ada Lovelace" },
   { id: "u2", label: "Alan Turing" },
   { id: "u3", label: "Grace Hopper" },
+  { id: "u4", label: "Annie Easley", disabled: true, description: "Not a member of this channel" },
   { id: "u4", label: "Katherine Johnson" },
 ];
 

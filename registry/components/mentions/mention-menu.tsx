@@ -50,13 +50,17 @@ export function MentionMenu({ className }: { className?: string }) {
         <button
           key={option.id}
           type="button"
+          aria-disabled={option.disabled || undefined}
           data-highlighted={index === highlight || undefined}
           className={cn(
-            "flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none",
-            index === highlight && "bg-accent text-accent-foreground"
+            "flex w-full cursor-default flex-col items-start rounded-sm px-2 py-1.5 text-left text-sm outline-none select-none",
+            index === highlight && !option.disabled && "bg-accent text-accent-foreground",
+            option.disabled && "text-muted-foreground"
           )}
           onMouseEnter={() => {
-            highlightOption(index);
+            if (!option.disabled) {
+              highlightOption(index);
+            }
           }}
           onMouseDown={(event) => {
             event.preventDefault();
@@ -65,7 +69,8 @@ export function MentionMenu({ className }: { className?: string }) {
             insert(option);
           }}
         >
-          {option.label}
+          <span>{option.label}</span>
+          {option.description ? <span className="text-xs text-muted-foreground">{option.description}</span> : null}
         </button>
       ))}
     </div>
