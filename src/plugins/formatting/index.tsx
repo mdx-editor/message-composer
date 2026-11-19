@@ -47,6 +47,7 @@ import {
 import { useEffect } from "react";
 
 import type { MessageComposerPlugin } from "../../core/plugin.ts";
+import { watchAnchorPosition } from "../../lexical/anchor-position.ts";
 import { MARKDOWN_TRANSFORMERS } from "../../lexical/markdown.ts";
 import { lexicalEditor$ } from "../../lexical/nodes.ts";
 
@@ -699,10 +700,17 @@ function FormattingPlugins() {
 
 function trackFormattingState(engine: Engine) {
   let cleanupEditor: (() => void) | null = null;
+  // While a link is current, its anchor is measured again whenever the page moves under it.
+  let stopWatchingAnchor: (() => void) | null = null;
+  const stopAnchorWatch = () => {
+    stopWatchingAnchor?.();
+    stopWatchingAnchor = null;
+  };
   const unsubEditorCell = engine.sub(lexicalEditor$, (editor: LexicalEditor | null) => {
     cleanupEditor?.();
     cleanupEditor = null;
     if (!editor) {
+      stopAnchorWatch();
       engine.pubIn({ [formattingState$]: INITIAL_FORMATTING_STATE, [currentLink$]: null });
       return;
     }
@@ -716,9 +724,23 @@ function trackFormattingState(engine: Engine) {
           ? { ...currentLink, anchorRect: computeLinkAnchorRect(editor, currentLink.linkKey) }
           : null,
       });
+      if (!currentLink) {
+        stopAnchorWatch();
+        return;
+      }
+      stopWatchingAnchor ??= watchAnchorPosition(editor, () => {
+        const link = engine.getValue(currentLink$);
+        if (link) {
+          engine.pub(currentLink$, { ...link, anchorRect: computeLinkAnchorRect(editor, link.linkKey) });
+        }
+      });
     };
     publishState();
-    cleanupEditor = editor.registerUpdateListener(publishState);
+    const unsubUpdate = editor.registerUpdateListener(publishState);
+    cleanupEditor = () => {
+      stopAnchorWatch();
+      unsubUpdate();
+    };
   });
   return () => {
     cleanupEditor?.();

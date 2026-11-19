@@ -28,6 +28,7 @@ import { useEffect, type ComponentType } from "react";
 import { mentions$ } from "../../core/nodes.ts";
 import type { MessageComposerPlugin } from "../../core/plugin.ts";
 import type { MessageComposerMention } from "../../core/value.ts";
+import { watchAnchorPosition } from "../../lexical/anchor-position.ts";
 import type { LexicalExportVisitor, LexicalVisitor } from "../../lexical/mdast/exportMarkdownFromLexical.ts";
 import type { MdastImportVisitor } from "../../lexical/mdast/importMarkdownToLexical.ts";
 import { exportVisitors$, importVisitors$ } from "../../lexical/mdast/registry.ts";
@@ -228,8 +229,15 @@ function trackMentionTrigger(engine: Engine, providers: MessageComposerMentionPr
   const pattern = buildTriggerPattern(providers.map((provider) => provider.trigger));
   let dismissed: { nodeKey: string; triggerOffset: number } | null = null;
   let cleanupEditor: (() => void) | null = null;
+  // While the menu is open, its anchor is measured again whenever the page moves under it.
+  let stopWatchingAnchor: (() => void) | null = null;
+  const stopAnchorWatch = () => {
+    stopWatchingAnchor?.();
+    stopWatchingAnchor = null;
+  };
 
   const close = () => {
+    stopAnchorWatch();
     engine.pubIn({ [mentionMenu$]: null, [mentionAnchorRect$]: null });
   };
 
@@ -261,6 +269,12 @@ function trackMentionTrigger(engine: Engine, providers: MessageComposerMentionPr
       }
       dismissed = null;
       engine.pubIn({ [mentionMenu$]: state, [mentionAnchorRect$]: computeAnchorRect(editor, state) });
+      stopWatchingAnchor ??= watchAnchorPosition(editor, () => {
+        const current = engine.getValue(mentionMenu$);
+        if (current) {
+          engine.pub(mentionAnchorRect$, computeAnchorRect(editor, current));
+        }
+      });
     };
     detect();
     const unsubUpdate = editor.registerUpdateListener(detect);
@@ -273,6 +287,7 @@ function trackMentionTrigger(engine: Engine, providers: MessageComposerMentionPr
       COMMAND_PRIORITY_CRITICAL
     );
     cleanupEditor = () => {
+      stopAnchorWatch();
       unsubUpdate();
       unsubBlur();
     };
